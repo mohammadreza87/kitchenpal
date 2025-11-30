@@ -27,6 +27,7 @@ export const supabaseAuthMock = {
   resetPasswordForEmail: vi.fn().mockResolvedValue({ data: {}, error: null }),
   updateUser: vi.fn().mockResolvedValue({ data: {}, error: null }),
   signInWithOAuth: vi.fn().mockResolvedValue({ data: {}, error: null }),
+  signOut: vi.fn().mockResolvedValue({ error: null }),
 }
 
 export const resetSupabaseAuthMock = () => {
@@ -40,6 +41,8 @@ export const resetSupabaseAuthMock = () => {
   supabaseAuthMock.updateUser.mockResolvedValue({ data: {}, error: null })
   supabaseAuthMock.signInWithOAuth.mockClear()
   supabaseAuthMock.signInWithOAuth.mockResolvedValue({ data: {}, error: null })
+  supabaseAuthMock.signOut.mockClear()
+  supabaseAuthMock.signOut.mockResolvedValue({ error: null })
 }
 
 export const resetRouterMock = () => {

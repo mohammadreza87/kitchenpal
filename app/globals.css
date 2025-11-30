@@ -15,6 +15,11 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none; /* Chrome, Safari, Opera */
   }
+
+  /* Safe area padding for notched devices */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
 }
 
 
