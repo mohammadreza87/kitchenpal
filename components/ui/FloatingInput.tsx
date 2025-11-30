@@ -65,7 +65,7 @@ const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             className={cn(
-              'peer w-full rounded-xl border-2 bg-white px-4 py-4 text-base text-foreground transition-colors',
+              'peer w-full rounded-lg border-2 bg-white px-4 py-4 text-base text-foreground transition-colors',
               'placeholder:text-transparent focus:outline-none',
               icon ? 'pl-12' : 'pl-4',
               hasValue && !isPassword ? 'pr-12' : '',
