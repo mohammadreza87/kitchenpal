@@ -2,26 +2,178 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-}
-
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+}
+
+
+
+@layer base {
+  :root {
+    /* KitchenPal Light Theme */
+    --background: 0 0% 98%; /* N-99 */
+    --foreground: 0 0% 8%; /* N-10 */
+    --card: 0 0% 100%; /* N-100 */
+    --card-foreground: 0 0% 8%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 8%;
+    
+    /* Primary: Orange */
+    --primary: 14 100% 64%; /* #ff7043 */
+    --primary-foreground: 0 0% 100%;
+    
+    /* Secondary: Yellow */
+    --secondary: 45 100% 65%; /* #ffd54f */
+    --secondary-foreground: 0 0% 8%;
+    
+    /* Muted/Neutral */
+    --muted: 0 0% 96%; /* N-96 */
+    --muted-foreground: 0 0% 40%; /* N-40 */
+    
+    /* Accent: Pink */
+    --accent: 338 100% 63%; /* #ff4081 */
+    --accent-foreground: 0 0% 100%;
+    
+    /* Destructive: Error Red */
+    --destructive: 358 73% 55%; /* #e33338 */
+    --destructive-foreground: 0 0% 100%;
+    
+    /* Borders & Inputs */
+    --border: 0 0% 47%; /* N-40 Outline */
+    --input: 0 0% 89%; /* N-90 */
+    --ring: 14 100% 64%;
+    
+    /* Charts - using brand colors */
+    --chart-1: 14 100% 64%; /* Primary */
+    --chart-2: 45 100% 65%; /* Secondary */
+    --chart-3: 338 100% 63%; /* Tertiary */
+    --chart-4: 358 73% 55%; /* Error */
+    --chart-5: 0 0% 47%; /* Neutral */
+    
+    --radius: 0.5rem;
+  }
+  
+  .dark {
+    /* KitchenPal Dark Theme */
+    --background: 0 0% 8%; /* N-10 */
+    --foreground: 0 0% 98%; /* N-99 */
+    --card: 0 0% 10%; /* NV-10 Inverse Surface */
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 98%;
+    
+    /* Primary: Lighter in dark mode */
+    --primary: 14 100% 73%; /* #ffa88e P-80 */
+    --primary-foreground: 0 0% 8%;
+    
+    /* Secondary: Lighter in dark mode */
+    --secondary: 45 100% 75%; /* #ffe695 S-80 */
+    --secondary-foreground: 0 0% 8%;
+    
+    --muted: 0 0% 17%; /* NV-10 */
+    --muted-foreground: 0 0% 63%;
+    
+    /* Accent: Lighter in dark mode */
+    --accent: 338 100% 73%; /* #ff8cb3 T-80 */
+    --accent-foreground: 0 0% 8%;
+    
+    --destructive: 358 73% 65%; /* #ee7f82 E-80 */
+    --destructive-foreground: 0 0% 98%;
+    
+    --border: 0 0% 27%; /* NV-20 */
+    --input: 0 0% 27%;
+    --ring: 14 100% 73%;
+    
+    --chart-1: 14 100% 73%;
+    --chart-2: 45 100% 75%;
+    --chart-3: 338 100% 73%;
+    --chart-4: 358 73% 65%;
+    --chart-5: 0 0% 63%;
+  }
+}
+
+
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground text-body-md;
+  }
+
+  /* Enforce Poppins as the only font */
+  html {
+    font-family: var(--font-poppins), system-ui, sans-serif;
+  }
+}
+
+/*
+ * KitchenPal Typography System
+ * Based on Material Design 3 Type Scale with Poppins
+ *
+ * Usage:
+ * - Display:  text-display-lg, text-display-md, text-display-sm
+ * - Heading:  text-heading-lg, text-heading-md, text-heading-sm
+ * - Title:    text-title-lg, text-title-md, text-title-sm
+ * - Label:    text-label-lg, text-label-md, text-label-sm
+ * - Body:     text-body-lg, text-body-md, text-body-sm
+ */
+@layer components {
+  /* Display Styles - For hero sections, splash screens */
+  .text-display-lg {
+    @apply text-[3.5625rem] leading-[4rem] tracking-[-0.015625rem] font-normal;
+  }
+  .text-display-md {
+    @apply text-[2.8125rem] leading-[3.25rem] tracking-normal font-normal;
+  }
+  .text-display-sm {
+    @apply text-[2.25rem] leading-[2.75rem] tracking-normal font-normal;
+  }
+
+  /* Heading Styles - For page titles, section headers */
+  .text-heading-lg {
+    @apply text-[2rem] leading-[2.5rem] tracking-normal font-normal;
+  }
+  .text-heading-md {
+    @apply text-[1.75rem] leading-[2.25rem] tracking-normal font-normal;
+  }
+  .text-heading-sm {
+    @apply text-[1.5rem] leading-[2rem] tracking-normal font-normal;
+  }
+
+  /* Title Styles - For card titles, dialog titles */
+  .text-title-lg {
+    @apply text-[1.375rem] leading-[1.75rem] tracking-normal font-normal;
+  }
+  .text-title-md {
+    @apply text-[1rem] leading-[1.5rem] tracking-[0.009375rem] font-medium;
+  }
+  .text-title-sm {
+    @apply text-[0.875rem] leading-[1.25rem] tracking-[0.00625rem] font-medium;
+  }
+
+  /* Label Styles - For buttons, form labels, chips */
+  .text-label-lg {
+    @apply text-[0.875rem] leading-[1.25rem] tracking-[0.00625rem] font-medium;
+  }
+  .text-label-md {
+    @apply text-[0.75rem] leading-[1rem] tracking-[0.03125rem] font-medium;
+  }
+  .text-label-sm {
+    @apply text-[0.6875rem] leading-[1rem] tracking-[0.03125rem] font-medium;
+  }
+
+  /* Body Styles - For paragraphs, descriptions */
+  .text-body-lg {
+    @apply text-[1rem] leading-[1.5rem] tracking-[0.03125rem] font-normal;
+  }
+  .text-body-md {
+    @apply text-[0.875rem] leading-[1.25rem] tracking-[0.015625rem] font-normal;
+  }
+  .text-body-sm {
+    @apply text-[0.75rem] leading-[1rem] tracking-[0.025rem] font-normal;
   }
 }
