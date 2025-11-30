@@ -180,7 +180,7 @@ export default function ForgotPasswordPage() {
           <div className="mb-8">
             <h1 className="mb-2 text-3xl font-bold">Reset Password</h1>
             <p className="text-muted-foreground">
-              Let's get you back in! Share your email for a password reset.
+              Let&apos;s get you back in! Share your email for a password reset.
             </p>
           </div>
 

@@ -85,10 +85,10 @@ const FloatingInput = forwardRef<HTMLInputElement, FloatingInputProps>(
           <label
             htmlFor={inputId}
             className={cn(
-              'absolute bg-white px-2 transition-all duration-200 pointer-events-none z-10',
+              'absolute px-2 transition-all duration-200 pointer-events-none z-10',
               icon ? 'left-10' : 'left-3',
               isFloating
-                ? '-top-3 text-sm font-medium'
+                ? '-top-3 text-sm font-medium bg-gradient-to-b from-background to-white'
                 : 'top-1/2 -translate-y-1/2 text-base',
               error
                 ? 'text-brand-error'

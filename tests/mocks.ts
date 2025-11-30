@@ -9,6 +9,18 @@ export const routerMock = {
   prefetch: vi.fn(),
 }
 
+export const pathnameMock = {
+  value: '/preferences',
+}
+
+export const setPathname = (path: string) => {
+  pathnameMock.value = path
+}
+
+export const resetPathnameMock = () => {
+  pathnameMock.value = '/preferences'
+}
+
 export const supabaseAuthMock = {
   signInWithPassword: vi.fn().mockResolvedValue({ data: {}, error: null }),
   signUp: vi.fn().mockResolvedValue({ data: {}, error: null }),
@@ -33,16 +45,25 @@ export const resetSupabaseAuthMock = () => {
 export const resetRouterMock = () => {
   Object.values(routerMock).forEach((fn) => {
     if (typeof fn === 'function' && 'mockClear' in fn) {
-      // @ts-expect-error - mockClear exists on vi.fn
-      fn.mockClear()
+      (fn as { mockClear: () => void }).mockClear()
     }
   })
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type MockFn = ReturnType<typeof vi.fn<any[], any>>
+
+interface TimelineApi {
+  fromTo: MockFn
+  to: MockFn
+  call: MockFn
+}
+
 export const gsapMock = {
   timeline: vi.fn((options?: { onComplete?: () => void }) => {
-    const api = {
+    const api: TimelineApi = {
       fromTo: vi.fn().mockReturnThis(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       to: vi.fn().mockImplementation((...args: any[]) => {
         const lastArg = args[args.length - 1]
         if (lastArg && typeof lastArg === 'object' && typeof lastArg.onComplete === 'function') {
@@ -66,4 +87,5 @@ export const gsapMock = {
     config?.onComplete?.()
     return {}
   }),
+  set: vi.fn(),
 }

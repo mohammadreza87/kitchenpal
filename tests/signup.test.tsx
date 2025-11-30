@@ -53,6 +53,6 @@ describe('SignupPage', () => {
         data: { full_name: 'Kitchen Pal' },
       }),
     })
-    expect(routerMock.push).toHaveBeenCalledWith('/onboarding')
+    expect(routerMock.push).toHaveBeenCalledWith('/preferences')
   })
 })

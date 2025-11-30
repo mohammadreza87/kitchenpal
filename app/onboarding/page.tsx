@@ -107,13 +107,13 @@ export default function OnboardingPage() {
       setIsAnimating(true)
       animateTransition('next', currentSlide + 1)
     } else {
-      // Final slide - animate out before navigating to home
+      // Final slide - animate out before navigating to signup
       gsap.to(containerRef.current, {
         opacity: 0,
         y: -20,
         duration: 0.3,
         ease: 'power2.in',
-        onComplete: () => router.push('/home')
+        onComplete: () => router.push('/signup')
       })
     }
   }
@@ -124,7 +124,7 @@ export default function OnboardingPage() {
       y: -20,
       duration: 0.25,
       ease: 'power2.in',
-      onComplete: () => router.push('/home')
+      onComplete: () => router.push('/signup')
     })
   }
 
@@ -229,6 +229,17 @@ export default function OnboardingPage() {
           >
             {currentSlide === onboardingSlides.length - 1 ? "Let's Go!" : 'Next'}
           </button>
+
+          {/* Sign In Link */}
+          <p className="mt-4 text-center text-sm text-muted-foreground">
+            Already have an account?{' '}
+            <button
+              onClick={() => router.push('/login')}
+              className="font-medium text-brand-primary hover:underline"
+            >
+              Sign In
+            </button>
+          </p>
         </div>
       </div>
     </div>

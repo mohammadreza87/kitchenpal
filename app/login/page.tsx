@@ -81,7 +81,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}/auth/callback?next=/home`,
       },
     })
     if (error) setError(error.message)
@@ -89,7 +89,6 @@ export default function LoginPage() {
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden bg-background">
-      <div className="mx-auto w-full max-w-md px-6 py-8">
       {/* Background Shape - positioned at bottom, pushed down */}
       <div className="pointer-events-none fixed inset-x-0 z-0 flex items-end justify-center" style={{ bottom: '-50%' }}>
         <img
@@ -99,6 +98,7 @@ export default function LoginPage() {
         />
       </div>
 
+      <div className="relative z-10 mx-auto w-full max-w-md px-6 py-8">
       <FadeIn direction="up">
         <div className="mb-8">
           <h1 className="mb-2 text-3xl font-bold">Welcome Back Pal!</h1>
@@ -207,7 +207,7 @@ export default function LoginPage() {
 
         {/* Sign Up Link */}
         <p className="mt-8 text-center text-sm text-muted-foreground">
-          Don't have an account?{' '}
+          Don&apos;t have an account?{' '}
           <Link href="/signup" className="font-medium text-brand-primary hover:underline">
             Sign Up
           </Link>

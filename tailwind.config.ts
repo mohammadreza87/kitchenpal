@@ -122,7 +122,22 @@ const config: Config = {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
-  		}
+  		},
+      keyframes: {
+        'check-pop': {
+          '0%': { transform: 'scale(0)' },
+          '50%': { transform: 'scale(1.2)' },
+          '100%': { transform: 'scale(1)' },
+        },
+        'check-draw': {
+          '0%': { strokeDashoffset: '24' },
+          '100%': { strokeDashoffset: '0' },
+        },
+      },
+      animation: {
+        'check-pop': 'check-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+        'check-draw': 'check-draw 0.3s ease-out 0.1s forwards',
+      },
   	}
   },
   plugins: [require("tailwindcss-animate")],

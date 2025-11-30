@@ -82,7 +82,6 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden bg-background">
-      <div className="mx-auto w-full max-w-md px-6 py-8">
       {/* Background Shape - positioned at bottom, pushed down */}
       <div className="pointer-events-none fixed inset-x-0 z-0 flex items-end justify-center" style={{ bottom: '-50%' }}>
         <img
@@ -92,6 +91,7 @@ export default function ResetPasswordPage() {
         />
       </div>
 
+      <div className="relative z-10 mx-auto w-full max-w-md px-6 py-8">
       <FadeIn direction="up">
         <div className="mb-8">
           <h1 className="mb-2 text-3xl font-bold">Set New Password</h1>
