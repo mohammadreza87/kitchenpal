@@ -75,6 +75,7 @@ export interface Instruction {
 
 export interface Review {
   id: string
+  recipeId?: string
   userId: string
   userName: string
   userAvatar: string

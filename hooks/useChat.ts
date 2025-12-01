@@ -4,21 +4,32 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { createChatService } from '@/lib/services/chat.service'
 import { useUser } from './useUser'
-import type { ChatMessage, Conversation, ChatState } from '@/types/chat'
+import type { ChatMessage, Conversation, ChatState, RecipeOption } from '@/types/chat'
+
+/**
+ * Extended chat state to include image generation loading
+ * Requirements: 2.1 - Image generation for recipes
+ */
+interface ExtendedChatState extends ChatState {
+  isGeneratingImage: boolean
+  recipeImages: Record<string, string> // Map of recipe id to image URL
+}
 
 /**
  * useChat Hook - Manages chat state and message operations
- * Requirements: 1.1 (message sending), 1.4 (loading state), 6.2 (message persistence)
+ * Requirements: 1.1 (message sending), 1.4 (loading state), 2.1 (image generation), 6.2 (message persistence)
  */
 export function useChat(initialConversationId?: string) {
   const { user, loading: userLoading } = useUser()
   
-  const [state, setState] = useState<ChatState>({
+  const [state, setState] = useState<ExtendedChatState>({
     messages: [],
     isLoading: false,
     error: null,
     conversationId: initialConversationId || null,
     lastFailedMessage: undefined,
+    isGeneratingImage: false,
+    recipeImages: {},
   })
   
   const [conversation, setConversation] = useState<Conversation | null>(null)
@@ -197,6 +208,13 @@ export function useChat(initialConversationId?: string) {
           messages: [...prev.messages, { ...assistantMessage, status: 'sent' as const }],
           isLoading: false,
         }))
+
+        // Trigger image generation for recipe options if present
+        // Requirements: 2.1 - Image generation for recipes
+        if (aiResponse.recipeOptions && aiResponse.recipeOptions.length > 0) {
+          // Generate images in the background (don't await)
+          generateImagesForRecipes(aiResponse.recipeOptions)
+        }
       } else {
         setState(prev => ({ ...prev, isLoading: false }))
       }
@@ -285,6 +303,33 @@ export function useChat(initialConversationId?: string) {
   }, [])
 
   /**
+   * Inject an assistant message (e.g., from vision or local helpers)
+   */
+  const addAssistantMessage = useCallback((content: string, quickReplies?: QuickReply[], recipeOptions?: RecipeOption[]) => {
+    const message: ChatMessage = {
+      id: `assistant-${Date.now()}`,
+      role: 'assistant',
+      content,
+      timestamp: new Date(),
+      status: 'sent',
+      metadata: {},
+    }
+
+    if (quickReplies && quickReplies.length > 0) {
+      message.metadata = { ...message.metadata, quickReplies }
+    }
+
+    if (recipeOptions && recipeOptions.length > 0) {
+      message.metadata = { ...message.metadata, recipeOptions }
+    }
+
+    setState(prev => ({
+      ...prev,
+      messages: [...prev.messages, message],
+    }))
+  }, [])
+
+  /**
    * Reset chat state
    */
   const resetChat = useCallback(() => {
@@ -294,9 +339,101 @@ export function useChat(initialConversationId?: string) {
       error: null,
       conversationId: null,
       lastFailedMessage: undefined,
+      isGeneratingImage: false,
+      recipeImages: {},
     })
     setConversation(null)
   }, [])
+
+  /**
+   * Generate image for a recipe
+   * Requirements: 2.1 - Image generation for recipes
+   */
+  const generateRecipeImage = useCallback(async (
+    recipeName: string,
+    recipeId: string,
+    description?: string
+  ): Promise<string | null> => {
+    // Check if we already have an image for this recipe
+    if (state.recipeImages[recipeId]) {
+      return state.recipeImages[recipeId]
+    }
+
+    setState(prev => ({ ...prev, isGeneratingImage: true }))
+
+    try {
+      // Call the image API route
+      const response = await fetch('/api/image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          recipeName,
+          description,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate image')
+      }
+
+      const data = await response.json()
+      const imageUrl = data.imageUrl || '/assets/illustrations/food/placeholder-recipe.svg'
+
+      // Store the image URL
+      setState(prev => ({
+        ...prev,
+        isGeneratingImage: false,
+        recipeImages: {
+          ...prev.recipeImages,
+          [recipeId]: imageUrl,
+        },
+      }))
+
+      return imageUrl
+    } catch (error) {
+      console.error('Failed to generate recipe image:', error)
+      
+      // Use fallback placeholder
+      const fallbackUrl = '/assets/illustrations/food/placeholder-recipe.svg'
+      setState(prev => ({
+        ...prev,
+        isGeneratingImage: false,
+        recipeImages: {
+          ...prev.recipeImages,
+          [recipeId]: fallbackUrl,
+        },
+      }))
+
+      return fallbackUrl
+    }
+  }, [state.recipeImages])
+
+  /**
+   * Generate images for multiple recipes
+   * Requirements: 2.1 - Image generation for recipes
+   */
+  const generateImagesForRecipes = useCallback(async (
+    recipeOptions: RecipeOption[]
+  ): Promise<void> => {
+    if (!recipeOptions || recipeOptions.length === 0) return
+
+    // Generate images for each recipe in parallel
+    const imagePromises = recipeOptions.map(recipe =>
+      generateRecipeImage(recipe.name, recipe.id)
+    )
+
+    await Promise.allSettled(imagePromises)
+  }, [generateRecipeImage])
+
+  /**
+   * Get image URL for a recipe
+   * Requirements: 2.1 - Image generation for recipes
+   */
+  const getRecipeImage = useCallback((recipeId: string): string | undefined => {
+    return state.recipeImages[recipeId]
+  }, [state.recipeImages])
 
   /**
    * Get user conversations list
@@ -352,6 +489,10 @@ export function useChat(initialConversationId?: string) {
     isAuthenticated: !!user,
     lastFailedMessage: state.lastFailedMessage,
     
+    // Image generation state (Requirements: 2.1)
+    isGeneratingImage: state.isGeneratingImage,
+    recipeImages: state.recipeImages,
+    
     // Actions
     sendMessage,
     loadConversation,
@@ -359,9 +500,15 @@ export function useChat(initialConversationId?: string) {
     retryMessage,
     retryLastFailedMessage,
     clearError,
+    addAssistantMessage,
     resetChat,
     getUserConversations,
     deleteConversation,
+    
+    // Image generation actions (Requirements: 2.1)
+    generateRecipeImage,
+    generateImagesForRecipes,
+    getRecipeImage,
     
     // Utilities
     validateMessage: chatService.validateMessage.bind(chatService),

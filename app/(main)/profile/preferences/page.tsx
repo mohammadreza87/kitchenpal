@@ -69,6 +69,7 @@ export default function PreferencesSummaryPage() {
   const cuisine = preferences?.cuisine || []
   const allergies = preferences?.allergies || []
   const cookingSkill = preferences?.cooking_skill || 'Beginner'
+  const cookingSkillOptions = ['Beginner', 'Intermediate', 'Enthusiast', 'Advanced']
 
   // Get display labels from constants
   const getDietaryLabel = (id: string) =>
@@ -171,7 +172,34 @@ export default function PreferencesSummaryPage() {
             Cooking Skills
           </h2>
           <div className="flex flex-wrap gap-2">
-            <PreferenceChip label={cookingSkill} />
+            {cookingSkillOptions.map((option) => {
+              const isSelected = option === cookingSkill
+              return (
+                <div
+                  key={option}
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 ${
+                    isSelected ? 'bg-amber-50 border-gray-200' : 'bg-white border-gray-200'
+                  }`}
+                >
+                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-foreground">
+                    <svg
+                      className="h-3 w-3 text-white"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={3}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  </div>
+                  <span className="text-sm font-medium text-foreground">{option}</span>
+                </div>
+              )
+            })}
           </div>
         </section>
       </div>

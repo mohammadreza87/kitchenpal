@@ -1,0 +1,39 @@
+<svg width="256" height="192" viewBox="0 0 256 192" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Toaster body -->
+  <rect x="80" y="80" width="96" height="72" rx="12" fill="#E8F5F5"/>
+  <rect x="88" y="88" width="80" height="48" rx="8" fill="#B8E0E0"/>
+  <circle cx="128" cy="140" r="4" fill="#7BC9C9"/>
+
+  <!-- Toaster legs -->
+  <rect x="92" y="152" width="8" height="16" rx="2" fill="#7BC9C9"/>
+  <rect x="156" y="152" width="8" height="16" rx="2" fill="#7BC9C9"/>
+
+  <!-- Toaster face -->
+  <circle cx="112" cy="108" r="4" fill="#363636"/>
+  <circle cx="144" cy="108" r="4" fill="#363636"/>
+  <path d="M116 122 C120 128, 136 128, 140 122" stroke="#363636" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Bread slices -->
+  <rect x="96" y="64" width="24" height="24" rx="4" fill="#FDDDD5"/>
+  <rect x="136" y="64" width="24" height="24" rx="4" fill="#FDDDD5"/>
+
+  <!-- Pumpkin -->
+  <ellipse cx="56" cy="128" rx="28" ry="24" fill="#FFB366"/>
+  <ellipse cx="48" cy="128" rx="12" ry="20" fill="#FF9933"/>
+  <ellipse cx="64" cy="128" rx="12" ry="20" fill="#FFCC80"/>
+  <rect x="52" y="100" width="8" height="12" rx="2" fill="#8BC34A"/>
+  <circle cx="44" cy="120" r="3" fill="#363636"/>
+  <circle cx="68" cy="120" r="3" fill="#363636"/>
+  <path d="M50 132 C54 136, 62 136, 66 132" stroke="#363636" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Fork -->
+  <rect x="200" y="100" width="4" height="52" rx="2" fill="#C0C0C0"/>
+  <rect x="196" y="88" width="4" height="20" rx="2" fill="#C0C0C0"/>
+  <rect x="204" y="88" width="4" height="20" rx="2" fill="#C0C0C0"/>
+  <rect x="192" y="88" width="4" height="16" rx="2" fill="#C0C0C0"/>
+  <rect x="208" y="88" width="4" height="16" rx="2" fill="#C0C0C0"/>
+
+  <!-- Small tomato -->
+  <circle cx="192" cy="148" r="16" fill="#FF6B6B"/>
+  <ellipse cx="192" cy="134" rx="4" ry="2" fill="#8BC34A"/>
+</svg>

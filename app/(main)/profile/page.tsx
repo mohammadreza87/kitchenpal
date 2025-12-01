@@ -71,7 +71,10 @@ export default function ProfilePage() {
         <p className="mb-4 text-white">
           Find recipes based on what you already have at home!
         </p>
-        <button className="flex w-full items-center justify-center gap-2 rounded-full bg-secondary py-3 font-medium text-foreground transition-all hover:bg-secondary/90 active:scale-[0.98]">
+        <button
+          onClick={() => router.push('/chat')}
+          className="flex w-full items-center justify-center gap-2 rounded-full bg-secondary py-3 font-medium text-foreground transition-all hover:bg-secondary/90 active:scale-[0.98]"
+        >
           <Image
             src="/assets/icons/Search.svg"
             alt=""

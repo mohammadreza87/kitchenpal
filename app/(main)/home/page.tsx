@@ -1,132 +1,12 @@
 'use client'
 
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { gsap } from '@/lib/gsap'
 import { RecipeCard } from '@/components/home'
-
-// Mock data for recipes
-const newRecipes = [
-  {
-    id: '1',
-    title: 'Chocolate Tart',
-    description: 'Lorem ipsum dolor sit amet consectetur.',
-    imageUrl: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&h=300&fit=crop',
-    rating: 4,
-  },
-  {
-    id: '2',
-    title: 'Steamed Dumplings',
-    description: 'Lorem ipsum dolor sit amet consectetur.',
-    imageUrl: 'https://images.unsplash.com/photo-1496116218417-1a781b1c416c?w=400&h=300&fit=crop',
-    rating: 0,
-  },
-  {
-    id: '3',
-    title: 'Berry Bowl',
-    description: 'Lorem ipsum dolor sit amet consectetur.',
-    imageUrl: 'https://images.unsplash.com/photo-1590301157890-4810ed352733?w=400&h=300&fit=crop',
-    rating: 3,
-  },
-]
-
-const favorites = [
-  {
-    id: '4',
-    title: 'Gourmet Burger',
-    description: 'Lorem ipsum dolor sit amet consectetur.',
-    imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop',
-    rating: 0,
-  },
-  {
-    id: '5',
-    title: 'Acai Bowl',
-    description: 'Lorem ipsum dolor sit amet consectetur.',
-    imageUrl: 'https://images.unsplash.com/photo-1590301157890-4810ed352733?w=400&h=300&fit=crop',
-    rating: 0,
-  },
-  {
-    id: '6',
-    title: 'Avocado Toast',
-    description: 'Lorem ipsum dolor sit amet consectetur.',
-    imageUrl: 'https://images.unsplash.com/photo-1541519227354-08fa5d50c44d?w=400&h=300&fit=crop',
-    rating: 0,
-  },
-]
-
-const trending = [
-  {
-    id: '7',
-    title: 'Pesto Pasta',
-    description: 'Lorem ipsum dolor sit amet consectetur.',
-    imageUrl: 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=400&h=300&fit=crop',
-    rating: 0,
-  },
-  {
-    id: '8',
-    title: 'Fresh Salad',
-    description: 'Lorem ipsum dolor sit amet consectetur.',
-    imageUrl: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&h=300&fit=crop',
-    rating: 0,
-  },
-  {
-    id: '9',
-    title: 'Grilled Salmon',
-    description: 'Lorem ipsum dolor sit amet consectetur.',
-    imageUrl: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=400&h=300&fit=crop',
-    rating: 0,
-  },
-]
-
-const lowCarb = [
-  {
-    id: '10',
-    title: 'Grilled Steak',
-    description: 'Lorem ipsum dolor sit amet consectetur.',
-    imageUrl: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?w=400&h=300&fit=crop',
-    rating: 0,
-  },
-  {
-    id: '11',
-    title: 'Chicken Breast',
-    description: 'Lorem ipsum dolor sit amet consectetur.',
-    imageUrl: 'https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=400&h=300&fit=crop',
-    rating: 0,
-  },
-  {
-    id: '12',
-    title: 'Shrimp Salad',
-    description: 'Lorem ipsum dolor sit amet consectetur.',
-    imageUrl: 'https://images.unsplash.com/photo-1625943553852-781c6dd46faa?w=400&h=300&fit=crop',
-    rating: 0,
-  },
-]
-
-const frenchCuisine = [
-  {
-    id: '13',
-    title: 'Croissant',
-    description: 'Lorem ipsum dolor sit amet consectetur.',
-    imageUrl: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=400&h=300&fit=crop',
-    rating: 0,
-  },
-  {
-    id: '14',
-    title: 'Crème Brûlée',
-    description: 'Lorem ipsum dolor sit amet consectetur.',
-    imageUrl: 'https://images.unsplash.com/photo-1470124182917-cc6e71b22ecc?w=400&h=300&fit=crop',
-    rating: 0,
-  },
-  {
-    id: '15',
-    title: 'French Onion Soup',
-    description: 'Lorem ipsum dolor sit amet consectetur.',
-    imageUrl: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?w=400&h=300&fit=crop',
-    rating: 0,
-  },
-]
+import { useGeneratedRecipes, useFavorites } from '@/hooks'
 
 interface RecipeSectionProps {
   title: string
@@ -138,9 +18,58 @@ interface RecipeSectionProps {
     rating: number
   }>
   href?: string
+  emptyMessage?: string
+  showCreateButton?: boolean
+  onCreateClick?: () => void
+  isSaved: (id: string) => boolean
+  onToggleSave: (id: string) => void
 }
 
-function RecipeSection({ title, recipes, href = '/recipes' }: RecipeSectionProps) {
+function RecipeSection({
+  title,
+  recipes,
+  href = '/recipes',
+  emptyMessage = 'No recipes yet',
+  showCreateButton = false,
+  onCreateClick,
+  isSaved,
+  onToggleSave,
+}: RecipeSectionProps) {
+  if (recipes.length === 0) {
+    return (
+      <section className="mb-6">
+        <div className="mb-3 flex items-center justify-between px-6">
+          <h2 className="text-base font-semibold" style={{ color: '#282828' }}>
+            {title}
+          </h2>
+        </div>
+        <div className="mx-6 rounded-2xl bg-neutral-50 p-6 text-center">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100">
+            <Image
+              src="/assets/icons/Fork.svg"
+              alt=""
+              width={24}
+              height={24}
+              className="opacity-40"
+            />
+          </div>
+          <p className="text-sm text-neutral-500">{emptyMessage}</p>
+          {showCreateButton && onCreateClick && (
+            <button
+              onClick={onCreateClick}
+              className="mt-3 inline-flex items-center gap-2 rounded-full bg-brand-primary px-4 py-2 text-sm font-medium text-white transition-all hover:bg-brand-primary-dark active:scale-[0.98]"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 5v14M5 12h14" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Create Recipe
+            </button>
+          )}
+        </div>
+      </section>
+    )
+  }
+
   return (
     <section className="mb-6">
       <div className="mb-3 flex items-center justify-between px-6">
@@ -159,7 +88,12 @@ function RecipeSection({ title, recipes, href = '/recipes' }: RecipeSectionProps
       <div className="pl-6">
         <div className="flex gap-3 overflow-x-auto pr-6 pb-2 scrollbar-hide">
           {recipes.map((recipe) => (
-            <RecipeCard key={recipe.id} {...recipe} />
+            <RecipeCard
+              key={recipe.id}
+              {...recipe}
+              isSaved={isSaved(recipe.id)}
+              onToggleSave={onToggleSave}
+            />
           ))}
         </div>
       </div>
@@ -170,9 +104,14 @@ function RecipeSection({ title, recipes, href = '/recipes' }: RecipeSectionProps
 export default function HomePage() {
   const router = useRouter()
   const containerRef = useRef<HTMLDivElement>(null)
+  const hasAnimated = useRef(false)
+  const { generatedRecipes, getNewRecipes } = useGeneratedRecipes()
+  const { savedIds, isSaved, toggleFavorite } = useFavorites()
 
   useEffect(() => {
-    if (!containerRef.current) return
+    if (!containerRef.current || hasAnimated.current) return
+
+    hasAnimated.current = true
 
     const sections = containerRef.current.querySelectorAll('[data-animate]')
 
@@ -193,30 +132,122 @@ export default function HomePage() {
     router.push('/chat')
   }
 
+  // Get new recipes (most recent)
+  const newRecipes = useMemo(() => {
+    return getNewRecipes(10).map(r => ({
+      id: r.id,
+      title: r.title,
+      description: r.description,
+      imageUrl: r.imageUrl,
+      rating: r.rating,
+    }))
+  }, [getNewRecipes])
+
+  // Get user's saved/favorite recipes from generated recipes
+  const favoriteRecipes = useMemo(() => {
+    return generatedRecipes
+      .filter(r => savedIds.has(r.id))
+      .slice(0, 10)
+      .map(r => ({
+        id: r.id,
+        title: r.title,
+        description: r.description,
+        imageUrl: r.imageUrl,
+        rating: r.rating,
+      }))
+  }, [generatedRecipes, savedIds])
+
+  // Get quick & easy recipes (under 30 min total time or 'easy' difficulty)
+  const quickRecipes = useMemo(() => {
+    return generatedRecipes
+      .filter(r =>
+        (r.totalTime && r.totalTime <= 30) ||
+        r.difficulty?.toLowerCase() === 'easy' ||
+        r.categories.some(c => c.toLowerCase().includes('quick') || c.toLowerCase().includes('easy'))
+      )
+      .slice(0, 10)
+      .map(r => ({
+        id: r.id,
+        title: r.title,
+        description: r.description,
+        imageUrl: r.imageUrl,
+        rating: r.rating,
+      }))
+  }, [generatedRecipes])
+
+  // Get healthy/low-carb recipes
+  const healthyRecipes = useMemo(() => {
+    return generatedRecipes
+      .filter(r =>
+        r.categories.some(c =>
+          c.toLowerCase().includes('healthy') ||
+          c.toLowerCase().includes('low-carb') ||
+          c.toLowerCase().includes('keto') ||
+          c.toLowerCase().includes('salad') ||
+          c.toLowerCase().includes('vegetable')
+        ) ||
+        (r.calories && r.calories < 400)
+      )
+      .slice(0, 10)
+      .map(r => ({
+        id: r.id,
+        title: r.title,
+        description: r.description,
+        imageUrl: r.imageUrl,
+        rating: r.rating,
+      }))
+  }, [generatedRecipes])
+
+  // Get desserts and sweets
+  const dessertRecipes = useMemo(() => {
+    return generatedRecipes
+      .filter(r =>
+        r.categories.some(c =>
+          c.toLowerCase().includes('dessert') ||
+          c.toLowerCase().includes('sweet') ||
+          c.toLowerCase().includes('cake') ||
+          c.toLowerCase().includes('cookie') ||
+          c.toLowerCase().includes('chocolate')
+        )
+      )
+      .slice(0, 10)
+      .map(r => ({
+        id: r.id,
+        title: r.title,
+        description: r.description,
+        imageUrl: r.imageUrl,
+        rating: r.rating,
+      }))
+  }, [generatedRecipes])
+
   return (
     <div ref={containerRef} className="min-h-screen bg-background pb-24">
       {/* Hero Section */}
-      <div className="relative overflow-hidden" style={{ backgroundColor: '#FFEEE8' }}>
-        {/* Decorative blob */}
-        <div
-          className="absolute -right-16 top-8 h-48 w-48 rounded-full opacity-50"
-          style={{ backgroundColor: '#FFD4C4' }}
-        />
+      <div className="relative overflow-hidden" style={{ backgroundColor: '#F8D8CE' }}>
+        {/* Decorative curve at bottom */}
+        <div className="pointer-events-none absolute -bottom-12 left-1/3 h-32 w-64 rounded-full bg-white opacity-100 blur-lg" />
 
-        <div className="relative z-10 px-6 pb-6 pt-8">
+        <div className="relative z-10 px-6 pb-8 pt-10">
           {/* Greeting */}
           <div data-animate>
-            <h1 className="text-xl font-bold" style={{ color: '#282828' }}>
+            <h1 className="text-2xl font-bold" style={{ color: '#2e2e2e' }}>
               Hi There
-              <span className="ml-1">🍦</span>
+              <Image
+                src="/assets/icons/IceCream.svg"
+                alt=""
+                width={20}
+                height={20}
+                className="ml-1 inline-block align-middle"
+                priority
+              />
             </h1>
-            <p className="mt-1 text-sm" style={{ color: '#434343' }}>
+            <p className="mt-2 text-base" style={{ color: '#3a3a3a' }}>
               Find recipes based on what you already have at home!
             </p>
           </div>
 
           {/* Decorative arrow */}
-          <div className="absolute right-6 top-8">
+          <div className="absolute right-6 top-10">
             <svg width="40" height="50" viewBox="0 0 40 50" fill="none">
               <path
                 d="M20 5 Q28 15, 24 28 Q20 40, 28 45"
@@ -240,7 +271,7 @@ export default function HomePage() {
           <button
             data-animate
             onClick={handleFindRecipes}
-            className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-white py-3.5 shadow-sm transition-all hover:shadow-md active:scale-[0.98]"
+            className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-white py-3.5 shadow-[0px_8px_16px_rgba(0,0,0,0.1)] transition-all hover:shadow-[0px_10px_20px_rgba(0,0,0,0.12)] active:scale-[0.98]"
           >
             <Image
               src="/assets/icons/Chef's Hat.svg"
@@ -249,7 +280,7 @@ export default function HomePage() {
               height={20}
               className="opacity-70"
             />
-            <span className="text-sm font-medium" style={{ color: '#282828' }}>
+            <span className="text-base font-medium" style={{ color: '#2e2e2e' }}>
               Find Recipes
             </span>
           </button>
@@ -259,24 +290,65 @@ export default function HomePage() {
       {/* Recipe Sections */}
       <div className="mt-5">
         <div data-animate>
-          <RecipeSection title="New Recipes" recipes={newRecipes} href="/recipes/new" />
+          <RecipeSection
+            title="New Recipes"
+            recipes={newRecipes}
+            href="/recipes/new"
+            emptyMessage="Start creating recipes by chatting with our AI chef!"
+            showCreateButton
+            onCreateClick={handleFindRecipes}
+            isSaved={isSaved}
+            onToggleSave={toggleFavorite}
+          />
         </div>
 
-        <div data-animate>
-          <RecipeSection title="Your Favorites" recipes={favorites} href="/saved" />
-        </div>
+        {favoriteRecipes.length > 0 && (
+          <div data-animate>
+            <RecipeSection
+              title="Your Favorites"
+              recipes={favoriteRecipes}
+              href="/saved"
+              isSaved={isSaved}
+              onToggleSave={toggleFavorite}
+            />
+          </div>
+        )}
 
-        <div data-animate>
-          <RecipeSection title="Trending" recipes={trending} href="/recipes/trending" />
-        </div>
+        {quickRecipes.length > 0 && (
+          <div data-animate>
+            <RecipeSection
+              title="Quick & Easy"
+              recipes={quickRecipes}
+              href="/recipes/quick"
+              isSaved={isSaved}
+              onToggleSave={toggleFavorite}
+            />
+          </div>
+        )}
 
-        <div data-animate>
-          <RecipeSection title="Low-Carb" recipes={lowCarb} href="/recipes/low-carb" />
-        </div>
+        {healthyRecipes.length > 0 && (
+          <div data-animate>
+            <RecipeSection
+              title="Healthy Choices"
+              recipes={healthyRecipes}
+              href="/recipes/healthy"
+              isSaved={isSaved}
+              onToggleSave={toggleFavorite}
+            />
+          </div>
+        )}
 
-        <div data-animate>
-          <RecipeSection title="French Cuisine" recipes={frenchCuisine} href="/recipes/french" />
-        </div>
+        {dessertRecipes.length > 0 && (
+          <div data-animate>
+            <RecipeSection
+              title="Sweet Treats"
+              recipes={dessertRecipes}
+              href="/recipes/desserts"
+              isSaved={isSaved}
+              onToggleSave={toggleFavorite}
+            />
+          </div>
+        )}
       </div>
     </div>
   )

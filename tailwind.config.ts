@@ -133,10 +133,25 @@ const config: Config = {
           '0%': { strokeDashoffset: '24' },
           '100%': { strokeDashoffset: '0' },
         },
+        'slide-in-left': {
+          '0%': { opacity: '0', transform: 'translateX(-20px)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
+        'slide-in-right': {
+          '0%': { opacity: '0', transform: 'translateX(20px)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
+        'fade-in': {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
       },
       animation: {
         'check-pop': 'check-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
         'check-draw': 'check-draw 0.3s ease-out 0.1s forwards',
+        'slide-in-left': 'slide-in-left 0.3s ease-out',
+        'slide-in-right': 'slide-in-right 0.3s ease-out',
+        'fade-in': 'fade-in 0.3s ease-out',
       },
   	}
   },

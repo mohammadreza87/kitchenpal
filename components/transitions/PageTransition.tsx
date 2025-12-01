@@ -67,6 +67,9 @@ export function PageTransition({ children }: PageTransitionProps) {
         setIsTransitioning(false)
         setTransitionDirection(null)
         previousPathRef.current = pathname
+        if (contentRef.current) {
+          gsap.set(contentRef.current, { clearProps: 'transform,opacity' })
+        }
       }
     })
 

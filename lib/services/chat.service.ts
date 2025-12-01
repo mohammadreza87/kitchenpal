@@ -11,6 +11,12 @@ import type {
   ChatMessageRow,
 } from '@/types/chat'
 import { chatMessageFromRow, conversationFromRow } from '@/types/chat'
+import {
+  GeminiServiceError,
+  type AIResponse,
+} from './gemini.service'
+import { createDeepseekService, DeepseekService } from './deepseek.service'
+import type { UserPreferences } from './prompt-builder'
 
 /**
  * Chat Service for message operations
@@ -18,9 +24,19 @@ import { chatMessageFromRow, conversationFromRow } from '@/types/chat'
  */
 export class ChatService {
   private supabase: SupabaseClient<Database>
+  private deepseekService: DeepseekService | null = null
 
   constructor(supabase: SupabaseClient<Database>) {
     this.supabase = supabase
+    // Initialize Deepseek service on the server; client will use API route
+    if (typeof window === 'undefined') {
+      try {
+        this.deepseekService = createDeepseekService()
+      } catch {
+        // Service will be null if API key is missing
+        console.warn('DeepSeek service not initialized - using fallback responses')
+      }
+    }
   }
 
   /**
@@ -200,25 +216,172 @@ export class ChatService {
 
 
   /**
-   * Placeholder for AI API integration
-   * This will be replaced with actual AI provider integration
-   * Requirements: 1.2 - AI response handling
+   * Gets AI response using DeepSeek (server) or API route fallback
+   * Requirements: 1.1 - Send message to AI backend
+   * Requirements: 1.2 - Include user preferences in prompt
+   * Requirements: 1.4 - Return structured recipe data
    */
   async getAIResponse(
-    _conversationId: string,
+    conversationId: string,
     userMessage: string,
-    _userPreferences?: { allergies?: string[]; dietary?: string[] }
+    userPreferences?: { allergies?: string[]; dietary?: string[] }
   ): Promise<{
     content: string
     quickReplies?: QuickReply[]
     recipeOptions?: RecipeOption[]
   }> {
-    // TODO: Replace with actual AI API integration
-    // This is a placeholder that returns mock responses
-    
+    // Always load history for context and for API fallback
+    const conversationHistory = await this.getConversationMessages(conversationId)
+
+    // If DeepSeek service is not available on the client, try the server API route before falling back
+    if (!this.deepseekService) {
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: userMessage,
+            conversationId,
+            conversationHistory,
+            userPreferences,
+          }),
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          return {
+            content: data.content,
+            quickReplies: data.quickReplies,
+            recipeOptions: data.recipeOptions,
+          }
+        }
+
+        console.error('Chat API error:', response.status, await response.text())
+      } catch (apiError) {
+        console.error('Chat API fetch failed:', apiError)
+      }
+
+      // Fallback if API route is unavailable
+      return this.getFallbackResponse(userMessage)
+    }
+
+    try {
+      // Transform user preferences to the format expected by prompt builder
+      const preferences: UserPreferences | undefined = userPreferences
+        ? {
+            allergies: userPreferences.allergies,
+            dietary: userPreferences.dietary,
+          }
+        : undefined
+
+      // Call DeepSeek API with conversation history and preferences
+      const aiResponse: AIResponse = await this.deepseekService.generateResponse(
+        userMessage,
+        conversationHistory,
+        preferences
+      )
+
+      // Transform the response to the expected format
+      return this.transformAIResponse(aiResponse)
+    } catch (error) {
+      // Handle service errors gracefully
+      if (error instanceof GeminiServiceError) {
+        console.error('LLM API error:', error.type, error.userMessage)
+        // Return user-friendly error message
+        return {
+          content: error.userMessage,
+          quickReplies: [
+            { id: '1', label: 'Try again', value: userMessage },
+            { id: '2', label: 'Show popular recipes', value: 'show popular recipes' },
+          ],
+        }
+      }
+
+      // For unexpected errors, log and return fallback
+      console.error('Unexpected error in getAIResponse:', error)
+      return this.getFallbackResponse(userMessage)
+    }
+  }
+
+  /**
+   * Transforms AIResponse to the chat service response format
+   * Requirements: 1.4 - Return structured recipe data
+   */
+  private transformAIResponse(aiResponse: AIResponse): {
+    content: string
+    quickReplies?: QuickReply[]
+    recipeOptions?: RecipeOption[]
+  } {
+    const result: {
+      content: string
+      quickReplies?: QuickReply[]
+      recipeOptions?: RecipeOption[]
+    } = {
+      content: aiResponse.content,
+    }
+
+    // Include quick replies if present
+    if (aiResponse.quickReplies && aiResponse.quickReplies.length > 0) {
+      result.quickReplies = aiResponse.quickReplies
+    }
+
+    // Include recipe options if present
+    if (aiResponse.recipeOptions && aiResponse.recipeOptions.length > 0) {
+      result.recipeOptions = aiResponse.recipeOptions
+    }
+
+    // Generate quick replies based on content if none provided
+    if (!result.quickReplies && !result.recipeOptions) {
+      result.quickReplies = this.generateContextualQuickReplies(aiResponse.content)
+    }
+
+    return result
+  }
+
+  /**
+   * Generates contextual quick replies based on AI response content
+   */
+  private generateContextualQuickReplies(content: string): QuickReply[] {
+    const lowerContent = content.toLowerCase()
+
+    // If response mentions recipes or cooking
+    if (lowerContent.includes('recipe') || lowerContent.includes('cook')) {
+      return [
+        { id: '1', label: 'More recipes', value: 'show me more recipe options' },
+        { id: '2', label: 'Different cuisine', value: 'suggest a different cuisine' },
+        { id: '3', label: 'Quick meals', value: 'show quick meals under 30 minutes' },
+      ]
+    }
+
+    // If response mentions ingredients
+    if (lowerContent.includes('ingredient')) {
+      return [
+        { id: '1', label: 'I have chicken', value: 'I have chicken' },
+        { id: '2', label: 'I have vegetables', value: 'I have vegetables' },
+        { id: '3', label: 'Vegetarian options', value: 'show vegetarian recipes' },
+      ]
+    }
+
+    // Default quick replies
+    return [
+      { id: '1', label: 'Show popular recipes', value: 'show popular recipes' },
+      { id: '2', label: 'Quick meals', value: 'show quick meals under 30 minutes' },
+      { id: '3', label: 'Healthy options', value: 'show healthy recipes' },
+    ]
+  }
+
+  /**
+   * Fallback responses when Gemini service is unavailable
+   * Used when API key is missing or service initialization fails
+   */
+  private getFallbackResponse(userMessage: string): {
+    content: string
+    quickReplies?: QuickReply[]
+    recipeOptions?: RecipeOption[]
+  } {
     const lowerMessage = userMessage.toLowerCase()
-    
-    // Simple keyword-based responses for demo
+
+    // Simple keyword-based responses for fallback
     if (lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
       return {
         content: "Hello! I'm your KitchenPal assistant. What ingredients do you have today? I can help you find delicious recipes!",
@@ -232,7 +395,7 @@ export class ChatService {
 
     if (lowerMessage.includes('chicken')) {
       return {
-        content: "Great! Here are some delicious chicken recipes I found for you:",
+        content: 'Great! Here are some delicious chicken recipes I found for you:',
         recipeOptions: [
           { id: 'recipe-1', name: 'Grilled Lemon Herb Chicken' },
           { id: 'recipe-2', name: 'Creamy Tuscan Chicken' },
@@ -243,7 +406,7 @@ export class ChatService {
 
     if (lowerMessage.includes('vegetarian') || lowerMessage.includes('vegan')) {
       return {
-        content: "Here are some tasty vegetarian options:",
+        content: 'Here are some tasty vegetarian options:',
         recipeOptions: [
           { id: 'recipe-4', name: 'Mediterranean Quinoa Bowl' },
           { id: 'recipe-5', name: 'Creamy Mushroom Risotto' },

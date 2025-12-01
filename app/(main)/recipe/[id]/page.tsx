@@ -4,535 +4,469 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Image from 'next/image'
 import { gsap } from '@/lib/gsap'
-import { RecipeHeader, TabNavigation, IngredientsTab, InstructionsTab, ReviewsTab, type RecipeTab } from '@/components/recipe'
-import type { Recipe, Ingredient } from '@/types/chat'
-import { scaleIngredientQuantity } from '@/types/chat'
+import { useFavorites, useGeneratedRecipes, useReviews } from '@/hooks'
+import { ReviewsTab } from '@/components/recipe/ReviewsTab'
+import { useUser } from '@/hooks/useUser'
 
 // Mock recipe data - comprehensive version of the home page recipes
-const mockRecipes: Recipe[] = [
+const mockRecipes = [
   {
-    id: '1',
+    id: '00000000-0000-0000-0000-000000000001',
     name: 'Chocolate Tart',
     author: 'Chef Marie',
     rating: 4.5,
     reviewCount: 128,
-    prepTime: '45 min',
+    prepTime: '30 min',
+    cookTime: '15 min',
+    servings: 4,
     difficulty: 'Medium',
     calories: 380,
     description: 'A rich and decadent chocolate tart with a buttery crust and silky ganache filling. Perfect for special occasions.',
     imageUrl: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=800&h=600&fit=crop',
     ingredients: [
-      { id: '1', name: 'Dark Chocolate', quantity: 200, unit: 'g' },
-      { id: '2', name: 'Heavy Cream', quantity: 250, unit: 'ml' },
-      { id: '3', name: 'Butter', quantity: 100, unit: 'g' },
-      { id: '4', name: 'All-purpose Flour', quantity: 200, unit: 'g' },
-      { id: '5', name: 'Sugar', quantity: 80, unit: 'g' },
-      { id: '6', name: 'Eggs', quantity: 2, unit: 'pcs' },
-      { id: '7', name: 'Vanilla Extract', quantity: 1, unit: 'tsp' },
+      { name: 'Dark Chocolate', quantity: 200, unit: 'g' },
+      { name: 'Heavy Cream', quantity: 250, unit: 'ml' },
+      { name: 'Butter', quantity: 100, unit: 'g' },
+      { name: 'All-purpose Flour', quantity: 200, unit: 'g' },
+      { name: 'Sugar', quantity: 80, unit: 'g' },
+      { name: 'Eggs', quantity: 2, unit: 'pcs' },
+      { name: 'Vanilla Extract', quantity: 1, unit: 'tsp' },
     ],
     instructions: [
-      { step: 1, text: 'Prepare the tart crust by mixing flour, butter, and sugar. Press into tart pan and chill for 30 minutes.', duration: '35 min' },
-      { step: 2, text: 'Blind bake the crust at 180°C (350°F) for 15 minutes until golden.', duration: '15 min' },
-      { step: 3, text: 'Heat cream until simmering, then pour over chopped chocolate. Stir until smooth.', duration: '5 min' },
-      { step: 4, text: 'Add butter and vanilla to the ganache, mix well.', duration: '3 min' },
-      { step: 5, text: 'Pour ganache into cooled crust and refrigerate for at least 2 hours.', duration: '2 hrs' },
-    ],
-    reviews: [
-      { id: '1', userId: 'u1', userName: 'Sarah M.', userAvatar: '/assets/illustrations/profile/Profile Pic.svg', date: '2024-01-15', rating: 5, comment: 'Absolutely divine! The ganache was perfectly smooth.' },
-      { id: '2', userId: 'u2', userName: 'John D.', userAvatar: '/assets/illustrations/profile/Profile Pic-1.svg', date: '2024-01-10', rating: 4, comment: 'Great recipe, but I added a pinch of sea salt on top.' },
+      'Prepare the tart crust by mixing flour, butter, and sugar. Press into tart pan and chill for 30 minutes.',
+      'Blind bake the crust at 180°C (350°F) for 15 minutes until golden.',
+      'Heat cream until simmering, then pour over chopped chocolate. Stir until smooth.',
+      'Add butter and vanilla to the ganache, mix well.',
+      'Pour ganache into cooled crust and refrigerate for at least 2 hours.',
     ],
   },
   {
-    id: '2',
+    id: '00000000-0000-0000-0000-000000000002',
     name: 'Steamed Dumplings',
     author: 'Chef Wong',
     rating: 4.8,
     reviewCount: 256,
-    prepTime: '1 hr',
+    prepTime: '45 min',
+    cookTime: '15 min',
+    servings: 4,
     difficulty: 'Medium',
     calories: 220,
     description: 'Traditional Chinese steamed dumplings filled with savory pork and vegetables. A dim sum classic.',
     imageUrl: 'https://images.unsplash.com/photo-1496116218417-1a781b1c416c?w=800&h=600&fit=crop',
     ingredients: [
-      { id: '1', name: 'Ground Pork', quantity: 300, unit: 'g' },
-      { id: '2', name: 'Dumpling Wrappers', quantity: 30, unit: 'pcs' },
-      { id: '3', name: 'Napa Cabbage', quantity: 150, unit: 'g' },
-      { id: '4', name: 'Green Onions', quantity: 3, unit: 'stalks' },
-      { id: '5', name: 'Ginger', quantity: 1, unit: 'tbsp' },
-      { id: '6', name: 'Soy Sauce', quantity: 2, unit: 'tbsp' },
-      { id: '7', name: 'Sesame Oil', quantity: 1, unit: 'tsp' },
+      { name: 'Ground Pork', quantity: 300, unit: 'g' },
+      { name: 'Dumpling Wrappers', quantity: 30, unit: 'pcs' },
+      { name: 'Napa Cabbage', quantity: 150, unit: 'g' },
+      { name: 'Green Onions', quantity: 3, unit: 'stalks' },
+      { name: 'Ginger', quantity: 1, unit: 'tbsp' },
+      { name: 'Soy Sauce', quantity: 2, unit: 'tbsp' },
+      { name: 'Sesame Oil', quantity: 1, unit: 'tsp' },
     ],
     instructions: [
-      { step: 1, text: 'Finely chop the cabbage and squeeze out excess water.', duration: '10 min' },
-      { step: 2, text: 'Mix pork with cabbage, green onions, ginger, soy sauce, and sesame oil.', duration: '5 min' },
-      { step: 3, text: 'Place filling in center of wrapper, fold and pleat edges to seal.', duration: '25 min' },
-      { step: 4, text: 'Steam dumplings for 12-15 minutes until cooked through.', duration: '15 min' },
-      { step: 5, text: 'Serve hot with dipping sauce made of soy sauce and rice vinegar.', duration: '2 min' },
-    ],
-    reviews: [
-      { id: '1', userId: 'u3', userName: 'Emily L.', userAvatar: '/assets/illustrations/profile/Profile Pic-2.svg', date: '2024-01-20', rating: 5, comment: 'Better than restaurant quality!' },
+      'Finely chop the cabbage and squeeze out excess water.',
+      'Mix pork with cabbage, green onions, ginger, soy sauce, and sesame oil.',
+      'Place filling in center of wrapper, fold and pleat edges to seal.',
+      'Steam dumplings for 12-15 minutes until cooked through.',
+      'Serve hot with dipping sauce made of soy sauce and rice vinegar.',
     ],
   },
   {
-    id: '3',
+    id: '00000000-0000-0000-0000-000000000003',
     name: 'Berry Bowl',
     author: 'Chef Anna',
     rating: 4.3,
     reviewCount: 89,
-    prepTime: '15 min',
+    prepTime: '10 min',
+    cookTime: '0 min',
+    servings: 2,
     difficulty: 'Easy',
     calories: 280,
     description: 'A refreshing and nutritious smoothie bowl topped with fresh berries, granola, and honey.',
     imageUrl: 'https://images.unsplash.com/photo-1590301157890-4810ed352733?w=800&h=600&fit=crop',
     ingredients: [
-      { id: '1', name: 'Frozen Mixed Berries', quantity: 200, unit: 'g' },
-      { id: '2', name: 'Banana', quantity: 1, unit: 'pc' },
-      { id: '3', name: 'Greek Yogurt', quantity: 100, unit: 'g' },
-      { id: '4', name: 'Almond Milk', quantity: 100, unit: 'ml' },
-      { id: '5', name: 'Granola', quantity: 50, unit: 'g' },
-      { id: '6', name: 'Honey', quantity: 1, unit: 'tbsp' },
-      { id: '7', name: 'Fresh Berries', quantity: 50, unit: 'g' },
+      { name: 'Frozen Mixed Berries', quantity: 200, unit: 'g' },
+      { name: 'Banana', quantity: 1, unit: 'pc' },
+      { name: 'Greek Yogurt', quantity: 100, unit: 'g' },
+      { name: 'Almond Milk', quantity: 100, unit: 'ml' },
+      { name: 'Granola', quantity: 50, unit: 'g' },
+      { name: 'Honey', quantity: 1, unit: 'tbsp' },
+      { name: 'Fresh Berries', quantity: 50, unit: 'g' },
     ],
     instructions: [
-      { step: 1, text: 'Blend frozen berries, banana, yogurt, and almond milk until smooth.', duration: '3 min' },
-      { step: 2, text: 'Pour into a bowl - it should be thick enough to hold toppings.', duration: '1 min' },
-      { step: 3, text: 'Top with granola, fresh berries, and drizzle with honey.', duration: '2 min' },
-    ],
-    reviews: [
-      { id: '1', userId: 'u4', userName: 'Mike R.', userAvatar: '/assets/illustrations/profile/Profile Pic-3.svg', date: '2024-01-18', rating: 4, comment: 'Perfect breakfast option!' },
+      'Blend frozen berries, banana, yogurt, and almond milk until smooth.',
+      'Pour into a bowl - it should be thick enough to hold toppings.',
+      'Top with granola, fresh berries, and drizzle with honey.',
     ],
   },
   {
-    id: '4',
-    name: 'Gourmet Burger',
-    author: 'Chef Tom',
-    rating: 4.7,
-    reviewCount: 312,
-    prepTime: '30 min',
-    difficulty: 'Easy',
-    calories: 650,
-    description: 'A juicy handcrafted burger with premium beef, caramelized onions, and special sauce.',
-    imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&h=600&fit=crop',
-    ingredients: [
-      { id: '1', name: 'Ground Beef (80/20)', quantity: 200, unit: 'g' },
-      { id: '2', name: 'Brioche Bun', quantity: 1, unit: 'pc' },
-      { id: '3', name: 'Cheddar Cheese', quantity: 2, unit: 'slices' },
-      { id: '4', name: 'Onion', quantity: 1, unit: 'medium' },
-      { id: '5', name: 'Lettuce', quantity: 2, unit: 'leaves' },
-      { id: '6', name: 'Tomato', quantity: 2, unit: 'slices' },
-      { id: '7', name: 'Pickles', quantity: 4, unit: 'slices' },
-    ],
-    instructions: [
-      { step: 1, text: 'Form beef into a patty, season with salt and pepper.', duration: '5 min' },
-      { step: 2, text: 'Caramelize sliced onions in butter over medium heat.', duration: '15 min' },
-      { step: 3, text: 'Grill patty 4 minutes per side for medium, add cheese in last minute.', duration: '8 min' },
-      { step: 4, text: 'Toast buns, assemble with lettuce, tomato, patty, onions, and pickles.', duration: '3 min' },
-    ],
-    reviews: [
-      { id: '1', userId: 'u5', userName: 'David K.', userAvatar: '/assets/illustrations/profile/Profile Pic-4.svg', date: '2024-01-22', rating: 5, comment: 'The caramelized onions make all the difference!' },
-    ],
-  },
-  {
-    id: '5',
-    name: 'Acai Bowl',
-    author: 'Chef Luna',
-    rating: 4.4,
-    reviewCount: 145,
-    prepTime: '10 min',
-    difficulty: 'Easy',
-    calories: 320,
-    description: 'A vibrant purple smoothie bowl made with acai berries and topped with fresh fruits.',
-    imageUrl: 'https://images.unsplash.com/photo-1590301157890-4810ed352733?w=800&h=600&fit=crop',
-    ingredients: [
-      { id: '1', name: 'Acai Packet (frozen)', quantity: 2, unit: 'pcs' },
-      { id: '2', name: 'Banana', quantity: 1, unit: 'pc' },
-      { id: '3', name: 'Almond Milk', quantity: 80, unit: 'ml' },
-      { id: '4', name: 'Strawberries', quantity: 50, unit: 'g' },
-      { id: '5', name: 'Blueberries', quantity: 30, unit: 'g' },
-      { id: '6', name: 'Coconut Flakes', quantity: 15, unit: 'g' },
-      { id: '7', name: 'Chia Seeds', quantity: 1, unit: 'tbsp' },
-    ],
-    instructions: [
-      { step: 1, text: 'Blend acai packets with half banana and almond milk until thick.', duration: '2 min' },
-      { step: 2, text: 'Pour into bowl and arrange toppings in rows.', duration: '3 min' },
-      { step: 3, text: 'Sprinkle with coconut flakes and chia seeds.', duration: '1 min' },
-    ],
-    reviews: [],
-  },
-  {
-    id: '6',
-    name: 'Avocado Toast',
-    author: 'Chef Sam',
-    rating: 4.2,
-    reviewCount: 98,
-    prepTime: '10 min',
-    difficulty: 'Easy',
-    calories: 350,
-    description: 'Creamy avocado on crispy sourdough with poached egg and everything bagel seasoning.',
-    imageUrl: 'https://images.unsplash.com/photo-1541519227354-08fa5d50c44d?w=800&h=600&fit=crop',
-    ingredients: [
-      { id: '1', name: 'Sourdough Bread', quantity: 2, unit: 'slices' },
-      { id: '2', name: 'Avocado', quantity: 1, unit: 'pc' },
-      { id: '3', name: 'Eggs', quantity: 2, unit: 'pcs' },
-      { id: '4', name: 'Everything Bagel Seasoning', quantity: 1, unit: 'tsp' },
-      { id: '5', name: 'Red Pepper Flakes', quantity: 0.5, unit: 'tsp' },
-      { id: '6', name: 'Lemon Juice', quantity: 1, unit: 'tsp' },
-    ],
-    instructions: [
-      { step: 1, text: 'Toast sourdough slices until golden and crispy.', duration: '3 min' },
-      { step: 2, text: 'Mash avocado with lemon juice, salt, and pepper.', duration: '2 min' },
-      { step: 3, text: 'Poach eggs in simmering water with a splash of vinegar.', duration: '4 min' },
-      { step: 4, text: 'Spread avocado on toast, top with egg and seasonings.', duration: '2 min' },
-    ],
-    reviews: [],
-  },
-  {
-    id: '7',
+    id: '00000000-0000-0000-0000-000000000007',
     name: 'Pesto Pasta',
     author: 'Chef Marco',
     rating: 4.6,
     reviewCount: 203,
-    prepTime: '25 min',
+    prepTime: '10 min',
+    cookTime: '15 min',
+    servings: 4,
     difficulty: 'Easy',
     calories: 520,
     description: 'Fresh basil pesto tossed with al dente pasta and topped with pine nuts and parmesan.',
     imageUrl: 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=800&h=600&fit=crop',
     ingredients: [
-      { id: '1', name: 'Pasta', quantity: 200, unit: 'g' },
-      { id: '2', name: 'Fresh Basil', quantity: 50, unit: 'g' },
-      { id: '3', name: 'Pine Nuts', quantity: 30, unit: 'g' },
-      { id: '4', name: 'Parmesan', quantity: 50, unit: 'g' },
-      { id: '5', name: 'Garlic', quantity: 2, unit: 'cloves' },
-      { id: '6', name: 'Olive Oil', quantity: 80, unit: 'ml' },
+      { name: 'Pasta', quantity: 200, unit: 'g' },
+      { name: 'Fresh Basil', quantity: 50, unit: 'g' },
+      { name: 'Pine Nuts', quantity: 30, unit: 'g' },
+      { name: 'Parmesan', quantity: 50, unit: 'g' },
+      { name: 'Garlic', quantity: 2, unit: 'cloves' },
+      { name: 'Olive Oil', quantity: 80, unit: 'ml' },
     ],
     instructions: [
-      { step: 1, text: 'Toast pine nuts in a dry pan until golden.', duration: '3 min' },
-      { step: 2, text: 'Blend basil, garlic, pine nuts, parmesan, and olive oil until smooth.', duration: '3 min' },
-      { step: 3, text: 'Cook pasta al dente, reserve 1 cup pasta water.', duration: '12 min' },
-      { step: 4, text: 'Toss hot pasta with pesto, adding pasta water to reach desired consistency.', duration: '2 min' },
+      'Toast pine nuts in a dry pan until golden.',
+      'Blend basil, garlic, pine nuts, parmesan, and olive oil until smooth.',
+      'Cook pasta al dente, reserve 1 cup pasta water.',
+      'Toss hot pasta with pesto, adding pasta water to reach desired consistency.',
     ],
-    reviews: [],
   },
   {
-    id: '8',
+    id: '00000000-0000-0000-0000-000000000008',
     name: 'Fresh Salad',
     author: 'Chef Nina',
     rating: 4.1,
     reviewCount: 67,
     prepTime: '15 min',
+    cookTime: '0 min',
+    servings: 2,
     difficulty: 'Easy',
     calories: 180,
     description: 'A crisp garden salad with mixed greens, cherry tomatoes, and balsamic vinaigrette.',
     imageUrl: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&h=600&fit=crop',
     ingredients: [
-      { id: '1', name: 'Mixed Greens', quantity: 150, unit: 'g' },
-      { id: '2', name: 'Cherry Tomatoes', quantity: 100, unit: 'g' },
-      { id: '3', name: 'Cucumber', quantity: 1, unit: 'pc' },
-      { id: '4', name: 'Red Onion', quantity: 0.5, unit: 'pc' },
-      { id: '5', name: 'Balsamic Vinegar', quantity: 2, unit: 'tbsp' },
-      { id: '6', name: 'Olive Oil', quantity: 3, unit: 'tbsp' },
+      { name: 'Mixed Greens', quantity: 150, unit: 'g' },
+      { name: 'Cherry Tomatoes', quantity: 100, unit: 'g' },
+      { name: 'Cucumber', quantity: 1, unit: 'pc' },
+      { name: 'Red Onion', quantity: 0.5, unit: 'pc' },
+      { name: 'Balsamic Vinegar', quantity: 2, unit: 'tbsp' },
+      { name: 'Olive Oil', quantity: 3, unit: 'tbsp' },
     ],
     instructions: [
-      { step: 1, text: 'Wash and dry all vegetables thoroughly.', duration: '5 min' },
-      { step: 2, text: 'Slice cucumber and onion, halve cherry tomatoes.', duration: '5 min' },
-      { step: 3, text: 'Whisk balsamic vinegar with olive oil, salt, and pepper.', duration: '2 min' },
-      { step: 4, text: 'Toss greens with vegetables and dress just before serving.', duration: '2 min' },
+      'Wash and dry all vegetables thoroughly.',
+      'Slice cucumber and onion, halve cherry tomatoes.',
+      'Whisk balsamic vinegar with olive oil, salt, and pepper.',
+      'Toss greens with vegetables and dress just before serving.',
     ],
-    reviews: [],
   },
   {
-    id: '9',
+    id: '00000000-0000-0000-0000-000000000009',
     name: 'Grilled Salmon',
     author: 'Chef Pierre',
     rating: 4.9,
     reviewCount: 178,
-    prepTime: '25 min',
+    prepTime: '10 min',
+    cookTime: '15 min',
+    servings: 2,
     difficulty: 'Medium',
     calories: 420,
     description: 'Perfectly grilled salmon fillet with lemon herb butter and roasted asparagus.',
     imageUrl: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=800&h=600&fit=crop',
     ingredients: [
-      { id: '1', name: 'Salmon Fillet', quantity: 200, unit: 'g' },
-      { id: '2', name: 'Asparagus', quantity: 150, unit: 'g' },
-      { id: '3', name: 'Butter', quantity: 50, unit: 'g' },
-      { id: '4', name: 'Lemon', quantity: 1, unit: 'pc' },
-      { id: '5', name: 'Fresh Dill', quantity: 2, unit: 'tbsp' },
-      { id: '6', name: 'Garlic', quantity: 2, unit: 'cloves' },
+      { name: 'Salmon Fillet', quantity: 200, unit: 'g' },
+      { name: 'Asparagus', quantity: 150, unit: 'g' },
+      { name: 'Butter', quantity: 50, unit: 'g' },
+      { name: 'Lemon', quantity: 1, unit: 'pc' },
+      { name: 'Fresh Dill', quantity: 2, unit: 'tbsp' },
+      { name: 'Garlic', quantity: 2, unit: 'cloves' },
     ],
     instructions: [
-      { step: 1, text: 'Season salmon with salt, pepper, and olive oil.', duration: '2 min' },
-      { step: 2, text: 'Make herb butter by mixing softened butter with dill, garlic, and lemon zest.', duration: '3 min' },
-      { step: 3, text: 'Grill salmon skin-side down for 4-5 minutes, flip and cook 3 more minutes.', duration: '8 min' },
-      { step: 4, text: 'Roast asparagus at 200°C while salmon cooks.', duration: '10 min' },
-      { step: 5, text: 'Top salmon with herb butter and serve with asparagus.', duration: '2 min' },
+      'Season salmon with salt, pepper, and olive oil.',
+      'Make herb butter by mixing softened butter with dill, garlic, and lemon zest.',
+      'Grill salmon skin-side down for 4-5 minutes, flip and cook 3 more minutes.',
+      'Roast asparagus at 200°C while salmon cooks.',
+      'Top salmon with herb butter and serve with asparagus.',
     ],
-    reviews: [],
   },
   {
-    id: '10',
+    id: '00000000-0000-0000-0000-000000000010',
     name: 'Grilled Steak',
     author: 'Chef Roberto',
     rating: 4.8,
     reviewCount: 245,
-    prepTime: '20 min',
+    prepTime: '35 min',
+    cookTime: '15 min',
+    servings: 2,
     difficulty: 'Medium',
     calories: 550,
     description: 'Restaurant-quality ribeye steak with a perfect sear and garlic herb butter.',
     imageUrl: 'https://images.unsplash.com/photo-1600891964092-4316c288032e?w=800&h=600&fit=crop',
     ingredients: [
-      { id: '1', name: 'Ribeye Steak', quantity: 300, unit: 'g' },
-      { id: '2', name: 'Butter', quantity: 50, unit: 'g' },
-      { id: '3', name: 'Garlic', quantity: 3, unit: 'cloves' },
-      { id: '4', name: 'Fresh Thyme', quantity: 3, unit: 'sprigs' },
-      { id: '5', name: 'Fresh Rosemary', quantity: 2, unit: 'sprigs' },
+      { name: 'Ribeye Steak', quantity: 300, unit: 'g' },
+      { name: 'Butter', quantity: 50, unit: 'g' },
+      { name: 'Garlic', quantity: 3, unit: 'cloves' },
+      { name: 'Fresh Thyme', quantity: 3, unit: 'sprigs' },
+      { name: 'Fresh Rosemary', quantity: 2, unit: 'sprigs' },
     ],
     instructions: [
-      { step: 1, text: 'Bring steak to room temperature, pat dry and season generously.', duration: '30 min' },
-      { step: 2, text: 'Heat cast iron pan until smoking hot.', duration: '5 min' },
-      { step: 3, text: 'Sear steak 3-4 minutes per side for medium-rare.', duration: '8 min' },
-      { step: 4, text: 'Add butter, garlic, and herbs, baste steak for 1 minute.', duration: '2 min' },
-      { step: 5, text: 'Rest for 5 minutes before slicing.', duration: '5 min' },
+      'Bring steak to room temperature, pat dry and season generously.',
+      'Heat cast iron pan until smoking hot.',
+      'Sear steak 3-4 minutes per side for medium-rare.',
+      'Add butter, garlic, and herbs, baste steak for 1 minute.',
+      'Rest for 5 minutes before slicing.',
     ],
-    reviews: [],
   },
   {
-    id: '11',
+    id: '00000000-0000-0000-0000-000000000011',
     name: 'Chicken Breast',
     author: 'Chef Elena',
     rating: 4.3,
     reviewCount: 134,
-    prepTime: '25 min',
+    prepTime: '10 min',
+    cookTime: '20 min',
+    servings: 2,
     difficulty: 'Easy',
     calories: 320,
     description: 'Juicy pan-seared chicken breast with a crispy golden crust and lemon pan sauce.',
     imageUrl: 'https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=800&h=600&fit=crop',
     ingredients: [
-      { id: '1', name: 'Chicken Breast', quantity: 250, unit: 'g' },
-      { id: '2', name: 'Lemon', quantity: 1, unit: 'pc' },
-      { id: '3', name: 'Chicken Broth', quantity: 100, unit: 'ml' },
-      { id: '4', name: 'Butter', quantity: 30, unit: 'g' },
-      { id: '5', name: 'Capers', quantity: 1, unit: 'tbsp' },
-      { id: '6', name: 'Fresh Parsley', quantity: 2, unit: 'tbsp' },
+      { name: 'Chicken Breast', quantity: 250, unit: 'g' },
+      { name: 'Lemon', quantity: 1, unit: 'pc' },
+      { name: 'Chicken Broth', quantity: 100, unit: 'ml' },
+      { name: 'Butter', quantity: 30, unit: 'g' },
+      { name: 'Capers', quantity: 1, unit: 'tbsp' },
+      { name: 'Fresh Parsley', quantity: 2, unit: 'tbsp' },
     ],
     instructions: [
-      { step: 1, text: 'Pound chicken to even thickness, season well.', duration: '5 min' },
-      { step: 2, text: 'Sear chicken in hot pan 5-6 minutes per side until golden.', duration: '12 min' },
-      { step: 3, text: 'Remove chicken, add broth and lemon juice to pan.', duration: '2 min' },
-      { step: 4, text: 'Simmer sauce, whisk in butter and capers.', duration: '3 min' },
-      { step: 5, text: 'Slice chicken, drizzle with sauce and garnish with parsley.', duration: '2 min' },
+      'Pound chicken to even thickness, season well.',
+      'Sear chicken in hot pan 5-6 minutes per side until golden.',
+      'Remove chicken, add broth and lemon juice to pan.',
+      'Simmer sauce, whisk in butter and capers.',
+      'Slice chicken, drizzle with sauce and garnish with parsley.',
     ],
-    reviews: [],
   },
   {
-    id: '12',
+    id: '00000000-0000-0000-0000-000000000012',
     name: 'Shrimp Salad',
     author: 'Chef Coastal',
     rating: 4.5,
     reviewCount: 92,
-    prepTime: '20 min',
+    prepTime: '15 min',
+    cookTime: '5 min',
+    servings: 2,
     difficulty: 'Easy',
     calories: 280,
     description: 'Refreshing shrimp salad with avocado, mango, and citrus dressing.',
     imageUrl: 'https://images.unsplash.com/photo-1625943553852-781c6dd46faa?w=800&h=600&fit=crop',
     ingredients: [
-      { id: '1', name: 'Large Shrimp', quantity: 200, unit: 'g' },
-      { id: '2', name: 'Mixed Greens', quantity: 100, unit: 'g' },
-      { id: '3', name: 'Avocado', quantity: 1, unit: 'pc' },
-      { id: '4', name: 'Mango', quantity: 0.5, unit: 'pc' },
-      { id: '5', name: 'Lime', quantity: 2, unit: 'pcs' },
-      { id: '6', name: 'Olive Oil', quantity: 3, unit: 'tbsp' },
+      { name: 'Large Shrimp', quantity: 200, unit: 'g' },
+      { name: 'Mixed Greens', quantity: 100, unit: 'g' },
+      { name: 'Avocado', quantity: 1, unit: 'pc' },
+      { name: 'Mango', quantity: 0.5, unit: 'pc' },
+      { name: 'Lime', quantity: 2, unit: 'pcs' },
+      { name: 'Olive Oil', quantity: 3, unit: 'tbsp' },
     ],
     instructions: [
-      { step: 1, text: 'Season and grill shrimp 2 minutes per side.', duration: '5 min' },
-      { step: 2, text: 'Dice avocado and mango into cubes.', duration: '5 min' },
-      { step: 3, text: 'Whisk lime juice with olive oil and honey.', duration: '2 min' },
-      { step: 4, text: 'Arrange greens, top with shrimp, avocado, mango, and dress.', duration: '3 min' },
+      'Season and grill shrimp 2 minutes per side.',
+      'Dice avocado and mango into cubes.',
+      'Whisk lime juice with olive oil and honey.',
+      'Arrange greens, top with shrimp, avocado, mango, and dress.',
     ],
-    reviews: [],
   },
   {
-    id: '13',
+    id: '00000000-0000-0000-0000-000000000013',
     name: 'Croissant',
     author: 'Chef François',
     rating: 4.9,
     reviewCount: 189,
     prepTime: '3 hrs',
+    cookTime: '15 min',
+    servings: 8,
     difficulty: 'Hard',
     calories: 340,
     description: 'Flaky, buttery French croissants with dozens of delicate layers.',
     imageUrl: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=800&h=600&fit=crop',
     ingredients: [
-      { id: '1', name: 'All-purpose Flour', quantity: 500, unit: 'g' },
-      { id: '2', name: 'Cold Butter', quantity: 280, unit: 'g' },
-      { id: '3', name: 'Milk', quantity: 240, unit: 'ml' },
-      { id: '4', name: 'Sugar', quantity: 50, unit: 'g' },
-      { id: '5', name: 'Yeast', quantity: 7, unit: 'g' },
-      { id: '6', name: 'Egg', quantity: 1, unit: 'pc' },
+      { name: 'All-purpose Flour', quantity: 500, unit: 'g' },
+      { name: 'Cold Butter', quantity: 280, unit: 'g' },
+      { name: 'Milk', quantity: 240, unit: 'ml' },
+      { name: 'Sugar', quantity: 50, unit: 'g' },
+      { name: 'Yeast', quantity: 7, unit: 'g' },
+      { name: 'Egg', quantity: 1, unit: 'pc' },
     ],
     instructions: [
-      { step: 1, text: 'Make dough with flour, milk, sugar, yeast. Chill 1 hour.', duration: '1 hr 15 min' },
-      { step: 2, text: 'Pound butter into a flat square, encase in dough.', duration: '10 min' },
-      { step: 3, text: 'Perform 3 folds, chilling 30 min between each.', duration: '2 hrs' },
-      { step: 4, text: 'Roll out, cut triangles, shape into croissants.', duration: '20 min' },
-      { step: 5, text: 'Proof 2 hours, brush with egg wash, bake at 200°C for 15 min.', duration: '2 hrs 15 min' },
+      'Make dough with flour, milk, sugar, yeast. Chill 1 hour.',
+      'Pound butter into a flat square, encase in dough.',
+      'Perform 3 folds, chilling 30 min between each.',
+      'Roll out, cut triangles, shape into croissants.',
+      'Proof 2 hours, brush with egg wash, bake at 200°C for 15 min.',
     ],
-    reviews: [],
   },
   {
-    id: '14',
+    id: '00000000-0000-0000-0000-000000000014',
     name: 'Crème Brûlée',
     author: 'Chef François',
     rating: 4.7,
     reviewCount: 156,
-    prepTime: '1 hr',
+    prepTime: '15 min',
+    cookTime: '45 min',
+    servings: 4,
     difficulty: 'Medium',
     calories: 420,
     description: 'Classic French vanilla custard with a caramelized sugar crust.',
     imageUrl: 'https://images.unsplash.com/photo-1470124182917-cc6e71b22ecc?w=800&h=600&fit=crop',
     ingredients: [
-      { id: '1', name: 'Heavy Cream', quantity: 400, unit: 'ml' },
-      { id: '2', name: 'Egg Yolks', quantity: 5, unit: 'pcs' },
-      { id: '3', name: 'Sugar', quantity: 100, unit: 'g' },
-      { id: '4', name: 'Vanilla Bean', quantity: 1, unit: 'pc' },
-      { id: '5', name: 'Demerara Sugar', quantity: 50, unit: 'g' },
+      { name: 'Heavy Cream', quantity: 400, unit: 'ml' },
+      { name: 'Egg Yolks', quantity: 5, unit: 'pcs' },
+      { name: 'Sugar', quantity: 100, unit: 'g' },
+      { name: 'Vanilla Bean', quantity: 1, unit: 'pc' },
+      { name: 'Demerara Sugar', quantity: 50, unit: 'g' },
     ],
     instructions: [
-      { step: 1, text: 'Heat cream with vanilla bean seeds until steaming.', duration: '5 min' },
-      { step: 2, text: 'Whisk egg yolks with sugar until pale.', duration: '3 min' },
-      { step: 3, text: 'Slowly temper hot cream into yolks, strain.', duration: '5 min' },
-      { step: 4, text: 'Bake in water bath at 150°C for 40-45 minutes.', duration: '45 min' },
-      { step: 5, text: 'Chill, then torch sugar topping until caramelized.', duration: '3 min' },
+      'Heat cream with vanilla bean seeds until steaming.',
+      'Whisk egg yolks with sugar until pale.',
+      'Slowly temper hot cream into yolks, strain.',
+      'Bake in water bath at 150°C for 40-45 minutes.',
+      'Chill, then torch sugar topping until caramelized.',
     ],
-    reviews: [],
   },
   {
-    id: '15',
+    id: '00000000-0000-0000-0000-000000000015',
     name: 'French Onion Soup',
     author: 'Chef Lyon',
     rating: 4.6,
     reviewCount: 134,
-    prepTime: '1.5 hrs',
+    prepTime: '15 min',
+    cookTime: '1 hr 15 min',
+    servings: 4,
     difficulty: 'Medium',
     calories: 380,
     description: 'Rich caramelized onion soup topped with crusty bread and melted Gruyère.',
     imageUrl: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?w=800&h=600&fit=crop',
     ingredients: [
-      { id: '1', name: 'Yellow Onions', quantity: 1, unit: 'kg' },
-      { id: '2', name: 'Beef Broth', quantity: 1, unit: 'L' },
-      { id: '3', name: 'Butter', quantity: 60, unit: 'g' },
-      { id: '4', name: 'Baguette', quantity: 4, unit: 'slices' },
-      { id: '5', name: 'Gruyère Cheese', quantity: 150, unit: 'g' },
-      { id: '6', name: 'Dry White Wine', quantity: 100, unit: 'ml' },
+      { name: 'Yellow Onions', quantity: 1, unit: 'kg' },
+      { name: 'Beef Broth', quantity: 1, unit: 'L' },
+      { name: 'Butter', quantity: 60, unit: 'g' },
+      { name: 'Baguette', quantity: 4, unit: 'slices' },
+      { name: 'Gruyère Cheese', quantity: 150, unit: 'g' },
+      { name: 'Dry White Wine', quantity: 100, unit: 'ml' },
     ],
     instructions: [
-      { step: 1, text: 'Thinly slice onions and cook in butter over medium-low heat until deeply caramelized.', duration: '45 min' },
-      { step: 2, text: 'Deglaze with white wine, cook until evaporated.', duration: '5 min' },
-      { step: 3, text: 'Add broth and simmer for 20 minutes.', duration: '20 min' },
-      { step: 4, text: 'Ladle into oven-safe bowls, top with bread and cheese.', duration: '5 min' },
-      { step: 5, text: 'Broil until cheese is bubbly and golden.', duration: '5 min' },
+      'Thinly slice onions and cook in butter over medium-low heat until deeply caramelized.',
+      'Deglaze with white wine, cook until evaporated.',
+      'Add broth and simmer for 20 minutes.',
+      'Ladle into oven-safe bowls, top with bread and cheese.',
+      'Broil until cheese is bubbly and golden.',
     ],
-    reviews: [],
   },
 ]
 
-// Helper function to scale ingredients
-function scaleIngredients(ingredients: Ingredient[], originalPortions: number, newPortions: number): Ingredient[] {
-  return ingredients.map(ing => ({
-    ...ing,
-    quantity: scaleIngredientQuantity(ing.quantity, originalPortions, newPortions)
-  }))
-}
+type RecipeTab = 'ingredients' | 'instructions' | 'review'
 
 export default function RecipePage() {
   const params = useParams()
   const id = params.id as string
   const router = useRouter()
+  const { user } = useUser()
+  const { isSaved, toggleFavorite } = useFavorites()
+  const { generatedRecipes } = useGeneratedRecipes()
+  const { getAverageRating, getReviewCount } = useReviews()
   const containerRef = useRef<HTMLDivElement>(null)
+  const cardRef = useRef<HTMLDivElement>(null)
+  const hasAnimated = useRef(false)
 
-  const [recipe, setRecipe] = useState<Recipe | null>(null)
+  const [recipe, setRecipe] = useState<typeof mockRecipes[0] | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<RecipeTab>('ingredients')
   const [portions, setPortions] = useState(4)
-  const [scaledIngredients, setScaledIngredients] = useState<Ingredient[]>([])
+  const [showMenu, setShowMenu] = useState(false)
 
-  // Default portions (assumed to be 4 for recipes)
-  const originalPortions = 4
+  // Get actual rating from reviews
+  const reviewCount = getReviewCount(id)
+  const averageRating = getAverageRating(id)
 
   useEffect(() => {
-    // Find recipe from mock data
-    const foundRecipe = mockRecipes.find(r => r.id === id)
+    // First check generated recipes
+    const generatedRecipe = generatedRecipes.find(r => r.id === id)
+    if (generatedRecipe) {
+      setRecipe({
+        id: generatedRecipe.id,
+        name: generatedRecipe.title,
+        author: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'You',
+        rating: generatedRecipe.rating || 5.0,
+        reviewCount: 0,
+        prepTime: generatedRecipe.prepTime || '30 min',
+        cookTime: generatedRecipe.cookTime || '30 min',
+        servings: generatedRecipe.servings || 4,
+        difficulty: generatedRecipe.difficulty || 'Medium',
+        calories: generatedRecipe.calories,
+        description: generatedRecipe.description,
+        imageUrl: generatedRecipe.imageUrl,
+        ingredients: generatedRecipe.ingredients || [],
+        instructions: generatedRecipe.instructions || [],
+      })
+      setPortions(generatedRecipe.servings || 4)
+      setLoading(false)
+      return
+    }
 
+    // Then check mock recipes
+    const foundRecipe = mockRecipes.find(r => r.id === id)
     if (foundRecipe) {
       setRecipe(foundRecipe)
-      setScaledIngredients(foundRecipe.ingredients)
-    } else {
-      setError('Recipe not found')
+      setPortions(foundRecipe.servings || 4)
     }
 
     setLoading(false)
-  }, [id])
+  }, [id, generatedRecipes, user])
 
-  // Handle portion changes
   useEffect(() => {
-    if (recipe && recipe.ingredients) {
-      const scaled = scaleIngredients(recipe.ingredients, originalPortions, portions)
-      setScaledIngredients(scaled)
-    }
-  }, [portions, recipe])
-
-  // Animate on load
-  useEffect(() => {
-    if (!loading && !error && containerRef.current) {
-      const elements = containerRef.current.querySelectorAll('[data-animate]')
+    if (!loading && recipe && cardRef.current && !hasAnimated.current) {
+      hasAnimated.current = true
       gsap.fromTo(
-        elements,
-        { y: 20, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.4, stagger: 0.08, ease: 'power2.out' }
+        cardRef.current,
+        { y: 100, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.5, ease: 'power3.out' }
       )
     }
-  }, [loading, error])
+  }, [loading, recipe])
 
   const handleBack = () => {
     router.back()
   }
 
-  const handleIncreasePortions = () => {
-    setPortions(prev => prev + 1)
+  const scaleIngredient = (quantity: number, originalServings: number, newServings: number) => {
+    if (originalServings <= 0) return quantity
+    return Number(((quantity * newServings) / originalServings).toFixed(2))
   }
 
-  const handleDecreasePortions = () => {
-    setPortions(prev => Math.max(1, prev - 1))
+  // Calculate total time from prepTime and cookTime
+  const getTotalTime = (prepTime: string, cookTime: string): string => {
+    const extractMinutes = (timeStr: string): number => {
+      const hrMatch = timeStr.match(/(\d+)\s*hr/)
+      const minMatch = timeStr.match(/(\d+)\s*min/)
+      return (hrMatch ? parseInt(hrMatch[1]) * 60 : 0) + (minMatch ? parseInt(minMatch[1]) : 0)
+    }
+    const totalMinutes = extractMinutes(prepTime) + extractMinutes(cookTime)
+    if (totalMinutes >= 60) {
+      const hours = Math.floor(totalMinutes / 60)
+      const mins = totalMinutes % 60
+      return mins > 0 ? `${hours} hr ${mins} min` : `${hours} hr`
+    }
+    return `${totalMinutes} min`
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
-        {/* Loading Skeleton */}
-        <div className="animate-pulse">
-          {/* Hero Image Skeleton */}
-          <div className="h-64 bg-gray-200" />
-
-          {/* Content Skeleton */}
-          <div className="px-6 py-6 space-y-4">
-            <div className="h-8 w-3/4 bg-gray-200 rounded" />
-            <div className="h-4 w-1/2 bg-gray-200 rounded" />
-            <div className="flex gap-2 mt-4">
-              <div className="h-4 w-16 bg-gray-200 rounded" />
-              <div className="h-4 w-16 bg-gray-200 rounded" />
-            </div>
-            <div className="flex gap-4 mt-6">
-              <div className="h-12 w-24 bg-gray-200 rounded" />
-              <div className="h-12 w-24 bg-gray-200 rounded" />
-              <div className="h-12 w-24 bg-gray-200 rounded" />
-            </div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative h-12 w-12">
+            <div className="absolute inset-0 animate-ping rounded-full bg-brand-primary/30" />
+            <div className="absolute inset-2 animate-pulse rounded-full bg-brand-primary/50" />
+            <div className="absolute inset-4 rounded-full bg-brand-primary" />
           </div>
+          <p className="text-sm text-muted-foreground">Loading recipe...</p>
         </div>
       </div>
     )
   }
 
-  if (error || !recipe) {
+  if (!recipe) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6">
         <Image
@@ -543,7 +477,7 @@ export default function RecipePage() {
           className="opacity-40"
         />
         <h2 className="mt-4 text-xl font-semibold text-foreground">
-          {error || 'Recipe not found'}
+          Recipe not found
         </h2>
         <p className="mt-2 text-muted-foreground text-center">
           We couldn&apos;t find the recipe you&apos;re looking for.
@@ -558,10 +492,13 @@ export default function RecipePage() {
     )
   }
 
+  const originalServings = recipe.servings || 4
+  const totalTime = getTotalTime(recipe.prepTime, recipe.cookTime)
+
   return (
-    <div ref={containerRef} className="min-h-screen bg-background pb-24">
-      {/* Hero Image with Back Button */}
-      <div data-animate className="relative h-64 w-full">
+    <div ref={containerRef} className="min-h-screen bg-background">
+      {/* Hero Image Section */}
+      <div className="relative h-[45vh] w-full">
         {recipe.imageUrl ? (
           <Image
             src={recipe.imageUrl}
@@ -582,79 +519,366 @@ export default function RecipePage() {
           </div>
         )}
 
-        {/* Back Button */}
+        {/* Back Button - curved arrow without background */}
         <button
           onClick={handleBack}
-          className="absolute top-4 left-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 backdrop-blur-sm shadow-md transition-all hover:bg-white active:scale-95"
+          className="absolute top-12 left-4 p-2 transition-all active:scale-95"
         >
-          <Image
-            src="/assets/icons/Arrow-Left.svg"
-            alt="Back"
-            width={24}
-            height={24}
-          />
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M15 19L8 12L15 5" stroke="#363636" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
         </button>
 
-        {/* Save Button */}
+        {/* Save/Bookmark Button - Always visible */}
         <button
-          className="absolute top-4 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 backdrop-blur-sm shadow-md transition-all hover:bg-white active:scale-95"
+          onClick={async () => {
+            if (recipe?.id) {
+              await toggleFavorite(recipe.id)
+            }
+          }}
+          className="absolute top-12 right-16 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-md transition-all active:scale-95"
         >
           <Image
-            src="/assets/icons/Bookmark.svg"
-            alt="Save"
-            width={24}
-            height={24}
+            src={isSaved(id) ? '/assets/icons/Bookmark-Filled.svg' : '/assets/icons/Bookmark.svg'}
+            alt={isSaved(id) ? 'Saved' : 'Save'}
+            width={20}
+            height={20}
+            style={{
+              filter: isSaved(id)
+                ? 'invert(45%) sepia(97%) saturate(1752%) hue-rotate(322deg) brightness(101%) contrast(101%)'
+                : 'invert(24%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(27%) contrast(89%)'
+            }}
           />
         </button>
+
+        {/* More Menu Button */}
+        <div className="absolute top-12 right-4">
+          <button
+            onClick={() => setShowMenu(!showMenu)}
+            className="p-2 transition-all active:scale-95"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="5" cy="12" r="2" fill="#363636"/>
+              <circle cx="12" cy="12" r="2" fill="#363636"/>
+              <circle cx="19" cy="12" r="2" fill="#363636"/>
+            </svg>
+          </button>
+
+          {/* Dropdown Menu */}
+          {showMenu && (
+            <>
+              {/* Backdrop to close menu */}
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setShowMenu(false)}
+              />
+              <div className="absolute right-0 top-full mt-2 z-50 w-48 rounded-xl bg-white shadow-lg border border-neutral-100 overflow-hidden">
+                <button
+                  onClick={async () => {
+                    if (recipe?.id) {
+                      await toggleFavorite(recipe.id)
+                    }
+                    setShowMenu(false)
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-[#363636] hover:bg-neutral-50 transition-colors"
+                >
+                  <Image
+                    src={isSaved(recipe?.id || '') ? '/assets/icons/Bookmark-Filled.svg' : '/assets/icons/Bookmark.svg'}
+                    alt=""
+                    width={20}
+                    height={20}
+                    style={{ filter: 'invert(45%) sepia(97%) saturate(1752%) hue-rotate(322deg) brightness(101%) contrast(101%)' }}
+                  />
+                  {isSaved(recipe?.id || '') ? 'Remove from Favorites' : 'Save to Favorites'}
+                </button>
+                <button
+                  onClick={() => {
+                    // Share functionality
+                    if (navigator.share && recipe) {
+                      navigator.share({
+                        title: recipe.name,
+                        text: recipe.description,
+                      })
+                    }
+                    setShowMenu(false)
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-[#363636] hover:bg-neutral-50 transition-colors border-t border-neutral-100"
+                >
+                  <Image
+                    src="/assets/icons/Direct-Send.svg"
+                    alt=""
+                    width={20}
+                    height={20}
+                    className="opacity-60"
+                  />
+                  Share Recipe
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
-      {/* Recipe Header */}
-      <div data-animate>
-        <RecipeHeader
-          title={recipe.name}
-          author={recipe.author}
-          rating={recipe.rating}
-          reviewCount={recipe.reviewCount}
-          prepTime={recipe.prepTime}
-          difficulty={recipe.difficulty}
-          calories={recipe.calories}
-          description={recipe.description}
-        />
-      </div>
+      {/* Content Card with overlap */}
+      <div
+        ref={cardRef}
+        className="relative -mt-8 bg-white rounded-t-[32px] min-h-[60vh] shadow-[0_-4px_20px_rgba(0,0,0,0.08)]"
+      >
+        {/* Handle indicator */}
+        <div className="flex justify-center pt-3 pb-4">
+          <div className="w-10 h-1 bg-neutral-300 rounded-full" />
+        </div>
 
-      {/* Tab Navigation */}
-      <div data-animate>
-        <TabNavigation
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-        />
-      </div>
+        {/* Recipe Header */}
+        <div className="px-6">
+          {/* Title and Rating */}
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <h1 className="text-xl font-bold text-[#363636]">{recipe.name}</h1>
+              <p className="text-sm text-neutral-400 mt-0.5">
+                By {recipe.author}
+              </p>
+            </div>
+            <div className="flex items-center gap-1">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <svg key={star} width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path
+                    d="M10 1L12.39 6.36L18.18 7.27L14.09 11.26L15.18 17.02L10 14.27L4.82 17.02L5.91 11.26L1.82 7.27L7.61 6.36L10 1Z"
+                    fill={star <= Math.round(averageRating) ? '#FFD700' : 'none'}
+                    stroke={star <= Math.round(averageRating) ? '#FFD700' : '#D1D5DB'}
+                    strokeWidth="1.5"
+                  />
+                </svg>
+              ))}
+              {reviewCount > 0 && (
+                <>
+                  <span className="font-semibold text-[#363636] ml-1">{averageRating.toFixed(1)}</span>
+                  <span className="text-xs text-neutral-400">({reviewCount})</span>
+                </>
+              )}
+            </div>
+          </div>
 
-      {/* Tab Content */}
-      <div data-animate>
-        {activeTab === 'ingredients' && (
-          <IngredientsTab
-            ingredients={scaledIngredients}
-            portions={portions}
-            onIncrease={handleIncreasePortions}
-            onDecrease={handleDecreasePortions}
-          />
-        )}
+          {/* Meta Info */}
+          <div className="flex items-center gap-4 mt-3">
+            <div className="flex items-center gap-1.5">
+              <Image src="/assets/icons/Clock.svg" alt="" width={16} height={16} className="opacity-60" />
+              <span className="text-sm text-neutral-500">{totalTime}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Image src="/assets/icons/Chart.svg" alt="" width={16} height={16} className="opacity-60" />
+              <span className="text-sm text-neutral-500">{recipe.difficulty}</span>
+            </div>
+            {recipe.calories && (
+              <div className="flex items-center gap-1.5">
+                <Image src="/assets/icons/Fire.svg" alt="" width={16} height={16} className="opacity-60" />
+                <span className="text-sm text-neutral-500">{recipe.calories} Cal</span>
+              </div>
+            )}
+          </div>
 
-        {activeTab === 'instructions' && (
-          <InstructionsTab
-            instructions={recipe.instructions}
-          />
-        )}
+          {/* Description Section */}
+          <div className="mt-5">
+            <h2 className="text-base font-semibold text-[#363636]">Description</h2>
+            <p className="text-sm text-neutral-500 mt-2 leading-relaxed">{recipe.description}</p>
+          </div>
+        </div>
 
-        {activeTab === 'reviews' && (
-          <ReviewsTab
-            reviews={recipe.reviews}
-            totalCount={recipe.reviewCount}
-            averageRating={recipe.rating}
-          />
-        )}
+        {/* Tab Navigation */}
+        <div className="px-6 mt-6 border-b border-neutral-100">
+          <div className="flex">
+            <button
+              onClick={() => setActiveTab('ingredients')}
+              className={`flex-1 pb-3 text-sm font-medium transition-colors ${
+                activeTab === 'ingredients'
+                  ? 'text-brand-primary border-b-2 border-brand-primary'
+                  : 'text-neutral-400'
+              }`}
+            >
+              Ingredients
+            </button>
+            <button
+              onClick={() => setActiveTab('instructions')}
+              className={`flex-1 pb-3 text-sm font-medium transition-colors ${
+                activeTab === 'instructions'
+                  ? 'text-brand-primary border-b-2 border-brand-primary'
+                  : 'text-neutral-400'
+              }`}
+            >
+              Instructions
+            </button>
+            <button
+              onClick={() => setActiveTab('review')}
+              className={`flex-1 pb-3 text-sm font-medium transition-colors ${
+                activeTab === 'review'
+                  ? 'text-brand-primary border-b-2 border-brand-primary'
+                  : 'text-neutral-400'
+              }`}
+            >
+              Review
+            </button>
+          </div>
+        </div>
+
+        {/* Tab Content */}
+        <div className="px-6 py-6 pb-24">
+          {activeTab === 'ingredients' && (
+            <div>
+              {/* Portion Control */}
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-base font-semibold text-[#363636]">Portion</h3>
+                  <p className="text-sm text-neutral-400">How many serving?</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setPortions(Math.max(1, portions - 1))}
+                    className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FFF5E6] text-[#363636] text-xl font-medium transition-all hover:bg-[#FFEDCC] active:scale-95"
+                  >
+                    −
+                  </button>
+                  <span className="w-6 text-center font-semibold text-[#363636]">{portions}</span>
+                  <button
+                    onClick={() => setPortions(portions + 1)}
+                    className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FFF5E6] text-[#363636] text-xl font-medium transition-all hover:bg-[#FFEDCC] active:scale-95"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              {/* Ingredients List */}
+              <div className="space-y-0">
+                {recipe.ingredients.map((ingredient, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between py-4 border-b border-neutral-100 last:border-0"
+                  >
+                    <div className="flex items-center gap-3">
+                      {/* Ingredient Icon Circle */}
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-50">
+                        <span className="text-2xl">
+                          {getIngredientEmoji(ingredient.name)}
+                        </span>
+                      </div>
+                      <span className="text-[#363636]">{ingredient.name}</span>
+                    </div>
+                    <span className="text-neutral-400">
+                      {scaleIngredient(ingredient.quantity, originalServings, portions)} {ingredient.unit}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'instructions' && (
+            <div className="space-y-6">
+              {recipe.instructions.map((instruction, index) => (
+                <div key={index} className="flex gap-4">
+                  <div className="flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-full bg-brand-primary text-white text-sm font-medium">
+                    {index + 1}
+                  </div>
+                  <p className="flex-1 text-[#363636] pt-1 leading-relaxed">{instruction}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {activeTab === 'review' && (
+            <ReviewsTab recipeId={id} className="-mx-5 -my-4" />
+          )}
+        </div>
       </div>
     </div>
   )
+}
+
+// Helper function to get emoji based on ingredient name
+function getIngredientEmoji(ingredientName: string): string {
+  const lowerName = ingredientName.toLowerCase()
+
+  const emojiMap: Record<string, string> = {
+    chicken: '🍗',
+    beef: '🥩',
+    pork: '🥓',
+    fish: '🐟',
+    salmon: '🐟',
+    shrimp: '🦐',
+    egg: '🥚',
+    milk: '🥛',
+    cheese: '🧀',
+    butter: '🧈',
+    bread: '🍞',
+    rice: '🍚',
+    pasta: '🍝',
+    noodle: '🍜',
+    tomato: '🍅',
+    potato: '🥔',
+    carrot: '🥕',
+    onion: '🧅',
+    garlic: '🧄',
+    pepper: '🌶️',
+    broccoli: '🥦',
+    corn: '🌽',
+    mushroom: '🍄',
+    lettuce: '🥬',
+    cucumber: '🥒',
+    avocado: '🥑',
+    lemon: '🍋',
+    lime: '🍋',
+    orange: '🍊',
+    apple: '🍎',
+    banana: '🍌',
+    strawberry: '🍓',
+    grape: '🍇',
+    watermelon: '🍉',
+    pineapple: '🍍',
+    coconut: '🥥',
+    olive: '🫒',
+    salt: '🧂',
+    honey: '🍯',
+    sugar: '🍬',
+    chocolate: '🍫',
+    coffee: '☕',
+    tea: '🍵',
+    wine: '🍷',
+    herb: '🌿',
+    thyme: '🌿',
+    rosemary: '🌿',
+    basil: '🌿',
+    parsley: '🌿',
+    cilantro: '🌿',
+    mint: '🌿',
+    dill: '🌿',
+    oil: '🫒',
+    water: '💧',
+    stock: '🍲',
+    broth: '🍲',
+    cream: '🥛',
+    flour: '🌾',
+    bean: '🫘',
+    nut: '🥜',
+    almond: '🥜',
+    peanut: '🥜',
+    pine: '🥜',
+    cabbage: '🥬',
+    greens: '🥬',
+    mango: '🥭',
+    berry: '🫐',
+    yogurt: '🥛',
+    granola: '🥣',
+    asparagus: '🥦',
+    caper: '🫒',
+    vanilla: '🌿',
+    yeast: '🧫',
+  }
+
+  for (const [key, emoji] of Object.entries(emojiMap)) {
+    if (lowerName.includes(key)) {
+      return emoji
+    }
+  }
+
+  return '🥄' // Default spoon emoji
 }

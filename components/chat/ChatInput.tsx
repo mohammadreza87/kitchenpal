@@ -16,7 +16,6 @@ export interface ChatInputProps {
  * ChatInput Component
  * Text input with send button for chat messages.
  * Validates non-empty messages and shows loading state during send.
- * Requirements: 1.1, 1.3, 1.4
  */
 const ChatInput = forwardRef<HTMLDivElement, ChatInputProps>(
   (
@@ -37,7 +36,7 @@ const ChatInput = forwardRef<HTMLDivElement, ChatInputProps>(
     const handleSubmit = (e: FormEvent) => {
       e.preventDefault()
       if (!canSend) return
-      
+
       onSend(message.trim())
       setMessage('')
     }
@@ -56,11 +55,12 @@ const ChatInput = forwardRef<HTMLDivElement, ChatInputProps>(
       <div
         ref={ref}
         className={cn(
-          'border-t border-neutral-100 bg-white px-4 py-3',
+          'fixed bottom-16 left-0 right-0 z-40 border-t border-neutral-100 bg-white px-4 py-3',
+          'max-w-3xl mx-auto',
           className
         )}
       >
-        <form onSubmit={handleSubmit} className="flex items-end gap-2">
+        <form onSubmit={handleSubmit} className="flex items-center gap-3">
           <div className="relative flex-1">
             <textarea
               value={message}
@@ -70,15 +70,15 @@ const ChatInput = forwardRef<HTMLDivElement, ChatInputProps>(
               disabled={isLoading || disabled}
               rows={1}
               className={cn(
-                'w-full resize-none rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 pr-12',
-                'text-body-md placeholder:text-muted-foreground',
-                'focus:border-brand-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary/20',
+                'w-full resize-none rounded-lg border-2 border-gray-200 bg-white px-4 py-4',
+                'text-base placeholder:text-gray-400',
+                'focus:border-brand-primary focus:outline-none',
                 'disabled:cursor-not-allowed disabled:opacity-50',
-                'max-h-32 min-h-[48px]'
+                'max-h-32 min-h-[56px]'
               )}
               style={{
                 height: 'auto',
-                minHeight: '48px',
+                minHeight: '56px',
               }}
               aria-label="Message input"
             />
@@ -88,7 +88,7 @@ const ChatInput = forwardRef<HTMLDivElement, ChatInputProps>(
             type="submit"
             disabled={!canSend}
             className={cn(
-              'flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full transition-all',
+              'flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full transition-all',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2',
               canSend
                 ? 'bg-brand-primary text-white hover:bg-brand-primary-dark active:scale-95'
