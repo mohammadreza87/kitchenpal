@@ -1,8 +1,16 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, NotificationSettings, NotificationSettingsUpdate } from '@/types/database'
 
+// Note: Using 'any' casts below because Supabase types may be out of sync with actual schema
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnySupabase = SupabaseClient<any>
+
 export class NotificationsService {
-  constructor(private supabase: SupabaseClient<Database>) {}
+  private supabase: AnySupabase
+
+  constructor(supabase: SupabaseClient<Database>) {
+    this.supabase = supabase as AnySupabase
+  }
 
   async getSettings(userId: string): Promise<NotificationSettings | null> {
     const { data, error } = await this.supabase

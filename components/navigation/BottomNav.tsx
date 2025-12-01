@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import Image from 'next/image'
 import { gsap } from '@/lib/gsap'
-import { cn } from '@/lib/utils'
 
 const navItems = [
   { href: '/home', icon: '/assets/icons/Home.svg', iconFilled: '/assets/icons/Home-Filled.svg', label: 'Home' },
@@ -67,7 +66,7 @@ export function BottomNav() {
     gsap.set(indicatorRef.current, { x: centerX })
   }, [mounted])
 
-  const handleItemClick = (href: string, index: number) => {
+  const handleItemClick = (href: string) => {
     const item = itemRefs.current.get(href)
     if (!item) return
 
@@ -103,7 +102,7 @@ export function BottomNav() {
         />
 
         {/* Nav Items */}
-        {navItems.map((item, index) => {
+        {navItems.map((item) => {
           const isActive = item.href === effectiveBasePath
 
           return (
@@ -113,7 +112,7 @@ export function BottomNav() {
               ref={(el) => {
                 if (el) itemRefs.current.set(item.href, el)
               }}
-              onClick={() => handleItemClick(item.href, index)}
+              onClick={() => handleItemClick(item.href)}
               className="relative z-10 flex h-12 w-12 items-center justify-center"
             >
               <Image

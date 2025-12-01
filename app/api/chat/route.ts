@@ -112,7 +112,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ChatRespo
     let llmService
     try {
       llmService = createDeepseekService()
-    } catch (err) {
+    } catch {
       return NextResponse.json(
         { content: '', error: 'AI service not configured. Please add DEEPSEEK_API_KEY.' },
         { status: 500 }

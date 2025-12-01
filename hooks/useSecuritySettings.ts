@@ -43,7 +43,10 @@ export function useSecuritySettings() {
 
       setSettings(settingsData)
       setSessions(sessionsData)
-      setMfaFactors(mfaData?.totp || [])
+      setMfaFactors((mfaData?.totp || []).map(f => ({
+        ...f,
+        friendly_name: f.friendly_name ?? null,
+      })))
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to fetch security settings'))
     } finally {

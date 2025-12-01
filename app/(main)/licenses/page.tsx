@@ -209,7 +209,7 @@ export default function LicensesPage() {
         <div data-animate className="mb-8 rounded-xl bg-amber-50 p-4">
           <p className="text-sm leading-relaxed" style={{ color: '#656565' }}>
             Kitchen Pal is built with the help of amazing open source software.
-            We're grateful to the developers and communities behind these projects.
+            We&apos;re grateful to the developers and communities behind these projects.
           </p>
         </div>
 
@@ -222,7 +222,7 @@ export default function LicensesPage() {
 
         {/* Licenses List */}
         <div className="space-y-3">
-          {licenses.map((lib, index) => (
+          {licenses.map((lib) => (
             <div key={lib.name} data-animate>
               <LicenseItem {...lib} />
             </div>

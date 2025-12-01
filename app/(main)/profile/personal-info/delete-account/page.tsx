@@ -79,7 +79,7 @@ export default function DeleteAccountPage() {
         <div data-animate className="mb-12 text-center">
           <p className="text-base leading-relaxed text-gray-600">
             When you delete your account, all your information will be permanently removed.
-            We're sad to see you go, but we respect your decision to move on.
+            We&apos;re sad to see you go, but we respect your decision to move on.
           </p>
         </div>
 

@@ -65,17 +65,21 @@ export async function getSavedRecipes(): Promise<FavoriteRecipe[]> {
   }
 
   // Transform to FavoriteRecipe format
-  return (data || []).map((item: SavedRecipe & { recipes: SavedRecipe['recipe'] }) => ({
-    id: item.recipes?.id || item.recipe_id,
-    title: item.recipes?.name || 'Unknown Recipe',
-    description: item.recipes?.description || '',
-    imageUrl: item.recipes?.image_url || '',
-    rating: item.recipes?.rating || 0,
-    prepTime: item.recipes?.prep_time,
-    difficulty: item.recipes?.difficulty,
-    calories: item.recipes?.calories,
-    savedAt: item.created_at,
-  }))
+  return (data || []).map((item) => {
+    // Supabase returns related data as array, get first element
+    const recipe = Array.isArray(item.recipes) ? item.recipes[0] : item.recipes
+    return {
+      id: recipe?.id || item.recipe_id,
+      title: recipe?.name || 'Unknown Recipe',
+      description: recipe?.description || '',
+      imageUrl: recipe?.image_url || '',
+      rating: recipe?.rating || 0,
+      prepTime: recipe?.prep_time,
+      difficulty: recipe?.difficulty,
+      calories: recipe?.calories,
+      savedAt: item.created_at,
+    }
+  })
 }
 
 /**

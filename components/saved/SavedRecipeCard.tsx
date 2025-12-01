@@ -13,7 +13,7 @@ interface SavedRecipeCardProps {
   onRemove?: (id: string) => void
 }
 
-export function SavedRecipeCard({ id, title, description, imageUrl, rating, onRemove }: SavedRecipeCardProps) {
+export function SavedRecipeCard({ id, title, description, imageUrl, onRemove }: SavedRecipeCardProps) {
   return (
     <Link href={`/recipe/${id}`} className="block flex-shrink-0 w-44">
       <div className="overflow-hidden rounded-2xl bg-white shadow-sm transition-all hover:shadow-md active:scale-[0.98]">

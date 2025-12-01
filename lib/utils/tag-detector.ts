@@ -164,7 +164,7 @@ function detectDietaryTags(text: string, ingredients: string[], recipe: RecipeDa
     tags.push('whole30')
   }
 
-  return [...new Set(tags)]
+  return Array.from(new Set(tags))
 }
 
 /**
@@ -270,7 +270,7 @@ function detectTimeTags(prepTime?: string, cookTime?: string, totalTime?: number
     }
   }
 
-  return [...new Set(tags)]
+  return Array.from(new Set(tags))
 }
 
 /**
@@ -393,7 +393,7 @@ function detectCuisineTags(text: string, cuisine?: string): CuisineTag[] {
     tags.push('spanish')
   }
 
-  return [...new Set(tags)]
+  return Array.from(new Set(tags))
 }
 
 /**
@@ -449,7 +449,7 @@ function detectMealTypeTags(text: string, mealType?: string): MealTypeTag[] {
     tags.push('main-course')
   }
 
-  return [...new Set(tags)]
+  return Array.from(new Set(tags))
 }
 
 /**
@@ -522,7 +522,7 @@ function detectProteinTags(text: string, ingredients: string[]): ProteinTag[] {
     tags.push('legumes')
   }
 
-  return [...new Set(tags)]
+  return Array.from(new Set(tags))
 }
 
 /**
@@ -593,7 +593,7 @@ function detectHealthTags(recipe: RecipeDataForTags, text: string): HealthTag[] 
     tags.push('antioxidant-rich')
   }
 
-  return [...new Set(tags)]
+  return Array.from(new Set(tags))
 }
 
 /**
@@ -654,7 +654,7 @@ function detectOccasionTags(text: string): OccasionTag[] {
     tags.push('special-occasion')
   }
 
-  return [...new Set(tags)]
+  return Array.from(new Set(tags))
 }
 
 /**
@@ -733,7 +733,7 @@ function detectCookingMethodTags(text: string, instructions: string[]): CookingM
     tags.push('stir-fry')
   }
 
-  return [...new Set(tags)]
+  return Array.from(new Set(tags))
 }
 
 /**
@@ -774,7 +774,7 @@ function detectSeasonTags(text: string, ingredients: string[]): SeasonTag[] {
     tags.push('year-round')
   }
 
-  return [...new Set(tags)]
+  return Array.from(new Set(tags))
 }
 
 /**

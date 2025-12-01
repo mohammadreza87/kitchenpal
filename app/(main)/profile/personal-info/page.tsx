@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, useState, useCallback } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -14,7 +14,6 @@ import {
   AboutYouModal,
   SocialEditModal
 } from '@/components/profile'
-import type { SocialLinks } from '@/types/database'
 
 type SocialLinkKey = 'website' | 'instagram' | 'youtube' | 'tiktok'
 

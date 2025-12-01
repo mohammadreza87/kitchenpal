@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, Children, cloneElement, isValidElement } from 'react'
+import { useRef, useEffect } from 'react'
 import { gsap } from '@/lib/gsap'
 
 interface StaggerChildrenProps {

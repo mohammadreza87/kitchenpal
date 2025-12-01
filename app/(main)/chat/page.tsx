@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { gsap } from '@/lib/gsap'
 import { FreeformChat, RecipeFormTab, ImageRecipeTab } from '@/components/chat'
 import { useUser } from '@/hooks/useUser'
 
@@ -22,9 +23,8 @@ export default function ChatPage() {
   const router = useRouter()
   const { user, loading } = useUser()
   const [activeTab, setActiveTab] = useState<TabType>('chat')
-  const [previousTab, setPreviousTab] = useState<TabType>('chat')
-  const [isAnimating, setIsAnimating] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
+  const fadeRef = useRef<HTMLDivElement>(null)
   const tabContainerRef = useRef<HTMLDivElement>(null)
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 })
   const [indicatorReady, setIndicatorReady] = useState(false)
@@ -71,9 +71,7 @@ export default function ChatPage() {
 
   // Handle tab change with animation
   const handleTabChange = (newTab: TabType) => {
-    if (newTab === activeTab || isAnimating) return
-    setPreviousTab(activeTab)
-    setIsAnimating(true)
+    if (newTab === activeTab) return
     setActiveTab(newTab)
 
     // Reset scroll and animation state
@@ -81,17 +79,19 @@ export default function ChatPage() {
       if (contentRef.current) {
         contentRef.current.scrollTop = 0
       }
-      setIsAnimating(false)
     }, 300)
   }
 
-  // Get animation direction
-  const getAnimationDirection = () => {
-    const tabOrder = ['chat', 'form', 'image']
-    const currentIndex = tabOrder.indexOf(activeTab)
-    const previousIndex = tabOrder.indexOf(previousTab)
-    return currentIndex > previousIndex ? 'left' : 'right'
-  }
+  // Fade in content on tab change (only animate opacity, not position)
+  useEffect(() => {
+    if (fadeRef.current) {
+      gsap.fromTo(
+        fadeRef.current,
+        { opacity: 0 },
+        { opacity: 1, duration: 0.2, ease: 'power2.out' }
+      )
+    }
+  }, [activeTab])
 
   // Show loading state while checking auth
   if (loading) {
@@ -158,15 +158,9 @@ export default function ChatPage() {
         {/* Tab Content - with top padding to account for fixed header */}
         <div
           ref={contentRef}
-          className="flex flex-1 flex-col pt-[60px] pb-4 overflow-y-auto"
+          className="flex flex-1 flex-col pt-[50px] pb-4 overflow-y-auto"
         >
-          <div
-            className={cn(
-              'flex-1 transition-all duration-300 ease-out',
-              isAnimating && getAnimationDirection() === 'left' && 'animate-slide-in-right',
-              isAnimating && getAnimationDirection() === 'right' && 'animate-slide-in-left'
-            )}
-          >
+          <div ref={fadeRef} className="flex-1">
             {activeTab === 'chat' && <FreeformChat />}
             {activeTab === 'form' && <RecipeFormTab />}
             {activeTab === 'image' && <ImageRecipeTab />}

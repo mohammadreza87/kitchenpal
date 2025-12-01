@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, createContext, useContext, useState, useCallback } from 'react'
+import { useRef, useEffect, createContext, useContext, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { gsap } from '@/lib/gsap'
 

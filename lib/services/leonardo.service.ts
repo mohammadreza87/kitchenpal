@@ -103,11 +103,13 @@ export class LeonardoService {
     try {
       const fullPrompt = buildImagePrompt(prompt, description)
 
+      const imageSize = this.config.imageSize || '768x768'
+      const [widthStr, heightStr] = imageSize.split('x')
       const createPayload: Record<string, unknown> = {
         prompt: fullPrompt,
         num_images: 1,
-        width: parseInt(this.config.imageSize.split('x')[0] || '768', 10),
-        height: parseInt(this.config.imageSize.split('x')[1] || '768', 10),
+        width: parseInt(widthStr || '768', 10),
+        height: parseInt(heightStr || '768', 10),
         promptMagic: true,
       }
 

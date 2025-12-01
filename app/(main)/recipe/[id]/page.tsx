@@ -394,7 +394,7 @@ export default function RecipePage() {
         cookTime: generatedRecipe.cookTime || '30 min',
         servings: generatedRecipe.servings || 4,
         difficulty: generatedRecipe.difficulty || 'Medium',
-        calories: generatedRecipe.calories,
+        calories: generatedRecipe.calories || 0,
         description: generatedRecipe.description,
         imageUrl: generatedRecipe.imageUrl,
         ingredients: generatedRecipe.ingredients || [],

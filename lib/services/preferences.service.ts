@@ -1,8 +1,16 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, UserPreferences, UserPreferencesUpdate } from '@/types/database'
 
+// Note: Using 'any' casts below because Supabase types may be out of sync with actual schema
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnySupabase = SupabaseClient<any>
+
 export class PreferencesService {
-  constructor(private supabase: SupabaseClient<Database>) {}
+  private supabase: AnySupabase
+
+  constructor(supabase: SupabaseClient<Database>) {
+    this.supabase = supabase as AnySupabase
+  }
 
   async getPreferences(userId: string): Promise<UserPreferences | null> {
     const { data, error } = await this.supabase
@@ -61,7 +69,7 @@ export class PreferencesService {
     const current = await this.getPreferences(userId)
     if (!current) return null
 
-    const dietary = [...new Set([...current.dietary, preference])]
+    const dietary = Array.from(new Set([...current.dietary, preference]))
     return this.updatePreferences(userId, { dietary })
   }
 
@@ -77,7 +85,7 @@ export class PreferencesService {
     const current = await this.getPreferences(userId)
     if (!current) return null
 
-    const cuisineList = [...new Set([...current.cuisine, cuisine])]
+    const cuisineList = Array.from(new Set([...current.cuisine, cuisine]))
     return this.updatePreferences(userId, { cuisine: cuisineList })
   }
 
@@ -93,7 +101,7 @@ export class PreferencesService {
     const current = await this.getPreferences(userId)
     if (!current) return null
 
-    const allergies = [...new Set([...current.allergies, allergy])]
+    const allergies = Array.from(new Set([...current.allergies, allergy]))
     return this.updatePreferences(userId, { allergies })
   }
 

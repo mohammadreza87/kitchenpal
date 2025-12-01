@@ -109,7 +109,7 @@ export default function AboutPage() {
           <p className="text-sm leading-relaxed" style={{ color: '#656565' }}>
             We believe cooking should be joyful, not stressful. Kitchen Pal is designed to inspire
             your culinary creativity, reduce food waste, and make home cooking accessible to everyone.
-            Whether you're a beginner or a seasoned chef, we're here to help you create delicious
+            Whether you&apos;re a beginner or a seasoned chef, we&apos;re here to help you create delicious
             meals with what you have.
           </p>
         </div>

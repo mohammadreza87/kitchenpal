@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database, UserFeedback, UserFeedbackInsert, FeedbackAttachment } from '@/types/database'
+import type { Database, UserFeedback, FeedbackAttachment } from '@/types/database'
 
 export type FeedbackCategory = 'bug' | 'feature' | 'improvement' | 'other'
 export type FeedbackStatus = 'pending' | 'reviewed' | 'in_progress' | 'resolved' | 'closed'
@@ -11,19 +11,28 @@ export interface SubmitFeedbackData {
   email?: string | null
 }
 
+// Note: Using 'any' casts below because Supabase types may be out of sync with actual schema
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnySupabase = SupabaseClient<any>
+
 export class FeedbackService {
-  constructor(private supabase: SupabaseClient<Database>) {}
+  private supabase: AnySupabase
+
+  constructor(supabase: SupabaseClient<Database>) {
+    this.supabase = supabase as AnySupabase
+  }
 
   async submitFeedback(userId: string | null, data: SubmitFeedbackData): Promise<UserFeedback | null> {
+    const insertData = {
+      user_id: userId,
+      rating: data.rating,
+      category: data.category,
+      message: data.message,
+      email: data.email,
+    }
     const { data: feedback, error } = await this.supabase
       .from('user_feedback')
-      .insert({
-        user_id: userId,
-        rating: data.rating,
-        category: data.category,
-        message: data.message,
-        email: data.email,
-      })
+      .insert(insertData)
       .select()
       .single()
 

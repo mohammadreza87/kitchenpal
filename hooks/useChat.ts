@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { createChatService } from '@/lib/services/chat.service'
 import { useUser } from './useUser'
-import type { ChatMessage, Conversation, ChatState, RecipeOption } from '@/types/chat'
+import type { ChatMessage, Conversation, ChatState, RecipeOption, QuickReply } from '@/types/chat'
 
 /**
  * Extended chat state to include image generation loading
@@ -312,15 +312,8 @@ export function useChat(initialConversationId?: string) {
       content,
       timestamp: new Date(),
       status: 'sent',
-      metadata: {},
-    }
-
-    if (quickReplies && quickReplies.length > 0) {
-      message.metadata = { ...message.metadata, quickReplies }
-    }
-
-    if (recipeOptions && recipeOptions.length > 0) {
-      message.metadata = { ...message.metadata, recipeOptions }
+      quickReplies: quickReplies && quickReplies.length > 0 ? quickReplies : undefined,
+      recipeOptions: recipeOptions && recipeOptions.length > 0 ? recipeOptions : undefined,
     }
 
     setState(prev => ({

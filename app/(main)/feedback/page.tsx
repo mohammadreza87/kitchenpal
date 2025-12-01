@@ -127,7 +127,7 @@ function FeedbackSkeleton() {
 export default function FeedbackPage() {
   const router = useRouter()
   const containerRef = useRef<HTMLDivElement>(null)
-  const { submitFeedback, submitting, isAuthenticated, userEmail } = useFeedback()
+  const { submitFeedback, submitting, isAuthenticated } = useFeedback()
   const { profile, loading: profileLoading } = useProfile()
   
   const [rating, setRating] = useState<number | null>(null)
@@ -317,7 +317,7 @@ export default function FeedbackPage() {
             Give Us Feedback
           </h1>
           <p className="text-sm" style={{ color: '#656565' }}>
-            We'd love to hear your thoughts! Your feedback helps us make Kitchen Pal better for everyone.
+            We&apos;d love to hear your thoughts! Your feedback helps us make Kitchen Pal better for everyone.
           </p>
           {isAuthenticated && profile?.full_name && (
             <p className="mt-2 text-sm" style={{ color: '#FF7043' }}>
@@ -329,7 +329,7 @@ export default function FeedbackPage() {
         {/* Rating Section */}
         <section data-animate className="mb-8">
           <h2 className="mb-4 text-base font-semibold" style={{ color: '#332B10' }}>
-            How's your experience with Kitchen Pal?
+            How&apos;s your experience with Kitchen Pal?
           </h2>
           <div className="flex justify-between rounded-2xl bg-gray-50 p-4">
             {ratingEmojis.map((item) => (
@@ -357,7 +357,7 @@ export default function FeedbackPage() {
         {/* Category Section */}
         <section data-animate className="mb-8">
           <h2 className="mb-4 text-base font-semibold" style={{ color: '#332B10' }}>
-            What's your feedback about?
+            What&apos;s your feedback about?
           </h2>
           <div className="grid grid-cols-2 gap-3">
             {feedbackCategories.map((cat) => (
@@ -428,7 +428,7 @@ export default function FeedbackPage() {
             Email <span className="font-normal" style={{ color: '#656565' }}>(Optional)</span>
           </h2>
           <p className="mb-3 text-xs" style={{ color: '#656565' }}>
-            Leave your email if you'd like us to follow up with you.
+            Leave your email if you&apos;d like us to follow up with you.
           </p>
           <FloatingInput
             type="email"

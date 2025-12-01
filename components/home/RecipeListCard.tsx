@@ -23,7 +23,6 @@ export function RecipeListCard({
   title,
   description,
   imageUrl,
-  rating,
   prepTime = '30 mins',
   servings,
   calories,

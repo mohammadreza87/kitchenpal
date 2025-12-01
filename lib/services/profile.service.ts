@@ -1,8 +1,16 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, Profile, ProfileUpdate, SocialLinks, SocialLinksUpdate } from '@/types/database'
 
+// Note: Using 'any' casts below because Supabase types may be out of sync with actual schema
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnySupabase = SupabaseClient<any>
+
 export class ProfileService {
-  constructor(private supabase: SupabaseClient<Database>) { }
+  private supabase: AnySupabase
+
+  constructor(supabase: SupabaseClient<Database>) {
+    this.supabase = supabase as AnySupabase
+  }
 
   async getProfile(userId: string): Promise<Profile | null> {
     const { data, error } = await this.supabase

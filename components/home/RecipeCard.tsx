@@ -14,7 +14,7 @@ interface RecipeCardProps {
   onToggleSave?: (id: string) => void
 }
 
-export function RecipeCard({ id, title, description, imageUrl, rating, isSaved = false, onToggleSave }: RecipeCardProps) {
+export function RecipeCard({ id, title, description, imageUrl, isSaved = false, onToggleSave }: RecipeCardProps) {
   return (
     <Link href={`/recipe/${id}`} className="block flex-shrink-0 w-44">
       <div className="overflow-hidden rounded-2xl bg-white shadow-sm transition-all duration-200 transform hover:-translate-y-2 hover:shadow-md active:-translate-y-1 active:shadow-md">

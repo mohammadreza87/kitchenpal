@@ -128,44 +128,55 @@ export function FreeformChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const hasScrolledOnce = useRef(false)
 
-  // Initialize with welcome message and first question
+  // Initialize with welcome message and first question immediately
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setMessages([
-        {
-          id: 'welcome',
-          type: 'assistant',
-          content: "Hi There, 🥗",
-        },
-      ])
-
-      // Add first question after a delay
-      setTimeout(() => {
-        addAssistantMessage(chatFlow[0])
-      }, 500)
-    }, 300)
-
-    return () => clearTimeout(timer)
+    // Set initial messages immediately without delays
+    setMessages([
+      {
+        id: 'welcome',
+        type: 'assistant',
+        content: "Hi There, 🥗",
+      },
+      {
+        id: chatFlow[0].id,
+        type: 'assistant',
+        content: chatFlow[0].question,
+        options: chatFlow[0].options,
+        multiSelect: chatFlow[0].multiSelect,
+      },
+    ])
   }, [])
 
   // Scroll to bottom when messages change
   useEffect(() => {
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+      if (!hasScrolledOnce.current) {
+        hasScrolledOnce.current = true
+        messagesEndRef.current.scrollIntoView({ behavior: 'auto', block: 'end' })
+        return
+      }
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' })
     }
   }, [messages, selectedOption, selectedOptions])
 
-  // Animate new messages
+  // Animate new messages (skip initial load)
+  const isInitialLoad = useRef(true)
   useEffect(() => {
+    // Skip animation on initial load
+    if (isInitialLoad.current) {
+      isInitialLoad.current = false
+      return
+    }
+
     if (containerRef.current) {
       const lastMessage = containerRef.current.querySelector('[data-message]:last-child')
       if (lastMessage) {
         gsap.fromTo(
           lastMessage,
-          { y: 20, opacity: 0 },
-          { y: 0, opacity: 1, duration: 0.3, ease: 'power2.out' }
+          { y: 12, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.25, ease: 'power2.out' }
         )
       }
     }
@@ -450,92 +461,34 @@ export function FreeformChat() {
     await generateRecipe(defaults)
   }
 
-  const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    try {
-      // Show user uploaded message
-      setMessages(prev => [
-        ...prev,
-        { id: `user-upload-${Date.now()}`, type: 'user', content: 'Uploaded an image for detection.' },
-      ])
-
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => {
-          const result = reader.result as string
-          const stripped = result.split(',')[1] || result
-          resolve(stripped)
-        }
-        reader.onerror = reject
-        reader.readAsDataURL(file)
-      })
-
-      const res = await fetch('/api/vision', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: base64 }),
-      })
-
-      if (!res.ok) {
-        throw new Error(await res.text())
-      }
-
-      const data = await res.json() as { name: string; summary?: string }
-      const dishName = data.name || 'this dish'
-
-      setMessages(prev => [
-        ...prev,
-        {
-          id: `detected-${Date.now()}`,
-          type: 'assistant',
-          content: `Looks like: ${dishName}`,
-          detectedName: dishName,
-          ctaType: 'recipe-from-image',
-        },
-      ])
-    } catch (error) {
-      console.error('Image analysis failed', error)
-      setMessages(prev => [
-        ...prev,
-        {
-          id: `detect-error-${Date.now()}`,
-          type: 'assistant',
-          content: "I couldn't analyze that image. Please try again or describe the dish.",
-        },
-      ])
-    } finally {
-      // reset input
-      event.target.value = ''
-    }
-  }
-
   const handleViewRecipe = () => {
     router.push('/recipe/generated')
   }
 
   const handleStartOver = () => {
-    setMessages([])
     setCurrentStep(0)
     setSelections({})
     setSelectedOption(null)
     setSelectedOptions([])
     setIsGenerating(false)
+    hasScrolledOnce.current = false
+    isInitialLoad.current = true
 
-    setTimeout(() => {
-      setMessages([
-        {
-          id: 'welcome',
-          type: 'assistant',
-          content: "Hi There, 🥗",
-        },
-      ])
-
-      setTimeout(() => {
-        addAssistantMessage(chatFlow[0])
-      }, 500)
-    }, 300)
+    // Reset messages immediately
+    setMessages([
+      {
+        id: 'welcome',
+        type: 'assistant',
+        content: "Hi There, 🥗",
+      },
+      {
+        id: chatFlow[0].id,
+        type: 'assistant',
+        content: chatFlow[0].question,
+        options: chatFlow[0].options,
+        multiSelect: chatFlow[0].multiSelect,
+      },
+    ])
   }
 
   // Get current options to display

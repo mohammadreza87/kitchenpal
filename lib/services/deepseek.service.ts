@@ -38,7 +38,7 @@ export class DeepseekService {
     message: string,
     conversationHistory: ChatMessage[] = [],
     userPreferences?: UserPreferences
-  ): Promise<{ content: string; quickReplies?: QuickReply[]; recipeOptions?: RecipeOption[] }> {
+  ): Promise<{ content: string; quickReplies?: QuickReply[]; recipeOptions?: RecipeOption[]; recipes?: Array<{ name: string; description: string; ingredients: Array<{ name: string; quantity: number; unit: string }>; instructions: string[]; prepTime: string; cookTime: string; servings: number; difficulty: 'Easy' | 'Medium' | 'Hard'; calories?: number }> }> {
     const systemPrompt = buildSystemPrompt(userPreferences)
     const historyContext = formatConversationHistory(conversationHistory, {
       maxTokens: Math.floor(this.config.maxTokens / 2),

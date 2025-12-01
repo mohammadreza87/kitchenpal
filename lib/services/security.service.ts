@@ -1,6 +1,10 @@
 import type { SupabaseClient, AuthMFAEnrollResponse, AuthMFAVerifyResponse } from '@supabase/supabase-js'
 import type { Database, SecuritySettings, SecuritySettingsUpdate, UserSession } from '@/types/database'
 
+// Note: Using 'any' casts below because Supabase types may be out of sync with actual schema
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnySupabase = SupabaseClient<any>
+
 export interface MFAEnrollmentData {
   id: string
   type: 'totp'
@@ -22,7 +26,11 @@ export interface UserDataExport {
 }
 
 export class SecurityService {
-  constructor(private supabase: SupabaseClient<Database>) {}
+  private supabase: AnySupabase
+
+  constructor(supabase: SupabaseClient<Database>) {
+    this.supabase = supabase as AnySupabase
+  }
 
   // Security Settings
   async getSettings(userId: string): Promise<SecuritySettings | null> {
@@ -102,13 +110,16 @@ export class SecurityService {
       throw new Error(error.message)
     }
 
+    // Type assertion since we know we're enrolling TOTP
+    const totpData = data as { id: string; type: 'totp'; totp: { qr_code: string; secret: string; uri: string } }
+
     return {
-      id: data.id,
-      type: data.type as 'totp',
+      id: totpData.id,
+      type: 'totp',
       totp: {
-        qr_code: data.totp.qr_code,
-        secret: data.totp.secret,
-        uri: data.totp.uri,
+        qr_code: totpData.totp.qr_code,
+        secret: totpData.totp.secret,
+        uri: totpData.totp.uri,
       },
     }
   }
@@ -353,16 +364,16 @@ export class SecurityService {
 
     for (const table of tables) {
       const column = table === 'feedback_attachments' ? 'feedback_id' : 'user_id'
-      
+
       if (table === 'feedback_attachments') {
         // Get feedback IDs first
         const { data: feedbacks } = await this.supabase
           .from('user_feedback')
           .select('id')
           .eq('user_id', userId)
-        
+
         if (feedbacks && feedbacks.length > 0) {
-          const feedbackIds = feedbacks.map(f => f.id)
+          const feedbackIds = feedbacks.map((f: { id: string }) => f.id)
           await this.supabase
             .from('feedback_attachments')
             .delete()
@@ -370,7 +381,7 @@ export class SecurityService {
         }
       } else {
         await this.supabase
-          .from(table as keyof Database['public']['Tables'])
+          .from(table)
           .delete()
           .eq(column, userId)
       }
