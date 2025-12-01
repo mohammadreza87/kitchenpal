@@ -15,6 +15,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'cdn.leonardo.ai',
       },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+      },
     ],
   },
 };

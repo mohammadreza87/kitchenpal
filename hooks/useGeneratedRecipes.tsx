@@ -31,6 +31,9 @@ export interface GeneratedRecipeItem {
   // Legacy flat categories for backward compatibility
   categories: string[]
   createdAt: string
+  // User info for social features
+  userId?: string
+  isOwn?: boolean
 }
 
 interface GeneratedRecipesContextType {
@@ -51,21 +54,15 @@ export function GeneratedRecipesProvider({ children }: { children: ReactNode }) 
   const { user } = useUser()
   const supabase = createClient()
 
-  // Fetch recipes from Supabase when user is logged in
+  // Fetch ALL recipes from Supabase (public feed)
   useEffect(() => {
     const fetchRecipes = async () => {
-      if (!user) {
-        setGeneratedRecipes([])
-        setLoading(false)
-        return
-      }
-
       try {
         setLoading(true)
+        // Fetch all recipes from all users (public feed)
         const { data, error } = await supabase
           .from('user_generated_recipes')
           .select('*')
-          .eq('user_id', user.id)
           .order('created_at', { ascending: false })
 
         if (error) {
@@ -97,6 +94,8 @@ export function GeneratedRecipesProvider({ children }: { children: ReactNode }) 
             tags: row.tags || {},
             categories: row.categories || [],
             createdAt: row.created_at,
+            userId: row.user_id,
+            isOwn: user ? row.user_id === user.id : false,
           }))
           setGeneratedRecipes(recipes)
         }
