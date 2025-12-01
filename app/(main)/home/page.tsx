@@ -290,8 +290,15 @@ export default function HomePage() {
       {/* Recipe Sections */}
       <div className="mt-5">
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
+          <div className="flex items-center justify-center py-20">
+            <div className="flex flex-col items-center gap-4">
+              <div className="relative h-12 w-12">
+                <div className="absolute inset-0 animate-ping rounded-full bg-brand-primary/30" />
+                <div className="absolute inset-2 animate-pulse rounded-full bg-brand-primary/50" />
+                <div className="absolute inset-4 rounded-full bg-brand-primary" />
+              </div>
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            </div>
           </div>
         ) : (
           <>
