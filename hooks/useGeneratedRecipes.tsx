@@ -1,7 +1,9 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
-import { type RecipeTags, flattenTags, structureTags, createEmptyTags } from '@/types/recipe-tags'
+import { createClient } from '@/lib/supabase/client'
+import { useUser } from '@/hooks/useUser'
+import { type RecipeTags } from '@/types/recipe-tags'
 
 export interface GeneratedRecipeItem {
   id: string
@@ -33,68 +35,179 @@ export interface GeneratedRecipeItem {
 
 interface GeneratedRecipesContextType {
   generatedRecipes: GeneratedRecipeItem[]
-  addGeneratedRecipe: (recipe: Omit<GeneratedRecipeItem, 'createdAt'>) => void
-  removeGeneratedRecipe: (id: string) => void
+  addGeneratedRecipe: (recipe: Omit<GeneratedRecipeItem, 'createdAt'>) => Promise<void>
+  removeGeneratedRecipe: (id: string) => Promise<void>
   getRecipesByCategory: (category: string) => GeneratedRecipeItem[]
   getNewRecipes: (limit?: number) => GeneratedRecipeItem[]
-  clearAllRecipes: () => void
+  clearAllRecipes: () => Promise<void>
+  loading: boolean
 }
-
-const LOCAL_STORAGE_KEY = 'kitchenpal_generated_recipes'
 
 const GeneratedRecipesContext = createContext<GeneratedRecipesContextType | null>(null)
 
 export function GeneratedRecipesProvider({ children }: { children: ReactNode }) {
   const [generatedRecipes, setGeneratedRecipes] = useState<GeneratedRecipeItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const { user } = useUser()
+  const supabase = createClient()
 
-  // Load from localStorage on mount
+  // Fetch recipes from Supabase when user is logged in
   useEffect(() => {
-    if (typeof window === 'undefined') return
-    try {
-      const stored = localStorage.getItem(LOCAL_STORAGE_KEY)
-      if (stored) {
-        const parsed = JSON.parse(stored)
-        setGeneratedRecipes(parsed)
+    const fetchRecipes = async () => {
+      if (!user) {
+        setGeneratedRecipes([])
+        setLoading(false)
+        return
       }
-    } catch (e) {
-      console.error('Failed to load generated recipes:', e)
-    }
-  }, [])
 
-  // Save to localStorage whenever recipes change
-  const saveToStorage = useCallback((recipes: GeneratedRecipeItem[]) => {
-    if (typeof window === 'undefined') return
+      try {
+        setLoading(true)
+        const { data, error } = await supabase
+          .from('user_generated_recipes')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+
+        if (error) {
+          console.error('Failed to fetch generated recipes:', error)
+          setGeneratedRecipes([])
+        } else {
+          // Transform database format to app format
+          const recipes: GeneratedRecipeItem[] = (data || []).map((row) => ({
+            id: row.id,
+            title: row.title,
+            description: row.description || '',
+            imageUrl: row.image_url || '',
+            rating: row.rating || 5,
+            prepTime: row.prep_time,
+            cookTime: row.cook_time,
+            totalTime: row.total_time,
+            difficulty: row.difficulty,
+            calories: row.calories,
+            protein: row.protein,
+            carbs: row.carbs,
+            fat: row.fat,
+            fiber: row.fiber,
+            sodium: row.sodium,
+            servings: row.servings,
+            cuisine: row.cuisine,
+            mealType: row.meal_type,
+            ingredients: row.ingredients || [],
+            instructions: row.instructions || [],
+            tags: row.tags || {},
+            categories: row.categories || [],
+            createdAt: row.created_at,
+          }))
+          setGeneratedRecipes(recipes)
+        }
+      } catch (e) {
+        console.error('Failed to fetch generated recipes:', e)
+        setGeneratedRecipes([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchRecipes()
+  }, [user, supabase])
+
+  const addGeneratedRecipe = useCallback(async (recipe: Omit<GeneratedRecipeItem, 'createdAt'>) => {
+    if (!user) {
+      console.warn('User not logged in, cannot save recipe')
+      return
+    }
+
     try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(recipes))
+      // Transform app format to database format
+      const dbRecord = {
+        user_id: user.id,
+        title: recipe.title,
+        description: recipe.description,
+        image_url: recipe.imageUrl,
+        rating: recipe.rating,
+        prep_time: recipe.prepTime,
+        cook_time: recipe.cookTime,
+        total_time: recipe.totalTime,
+        difficulty: recipe.difficulty,
+        calories: recipe.calories,
+        protein: recipe.protein,
+        carbs: recipe.carbs,
+        fat: recipe.fat,
+        fiber: recipe.fiber,
+        sodium: recipe.sodium,
+        servings: recipe.servings,
+        cuisine: recipe.cuisine,
+        meal_type: recipe.mealType,
+        ingredients: recipe.ingredients || [],
+        instructions: recipe.instructions || [],
+        tags: recipe.tags || {},
+        categories: recipe.categories || [],
+      }
+
+      const { data, error } = await supabase
+        .from('user_generated_recipes')
+        .insert(dbRecord)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Failed to save generated recipe:', error)
+        return
+      }
+
+      // Add to local state
+      const newRecipe: GeneratedRecipeItem = {
+        id: data.id,
+        title: data.title,
+        description: data.description || '',
+        imageUrl: data.image_url || '',
+        rating: data.rating || 5,
+        prepTime: data.prep_time,
+        cookTime: data.cook_time,
+        totalTime: data.total_time,
+        difficulty: data.difficulty,
+        calories: data.calories,
+        protein: data.protein,
+        carbs: data.carbs,
+        fat: data.fat,
+        fiber: data.fiber,
+        sodium: data.sodium,
+        servings: data.servings,
+        cuisine: data.cuisine,
+        mealType: data.meal_type,
+        ingredients: data.ingredients || [],
+        instructions: data.instructions || [],
+        tags: data.tags || {},
+        categories: data.categories || [],
+        createdAt: data.created_at,
+      }
+
+      setGeneratedRecipes(prev => [newRecipe, ...prev])
     } catch (e) {
-      console.error('Failed to save generated recipes:', e)
+      console.error('Failed to save generated recipe:', e)
     }
-  }, [])
+  }, [user, supabase])
 
-  const addGeneratedRecipe = useCallback((recipe: Omit<GeneratedRecipeItem, 'createdAt'>) => {
-    const newRecipe: GeneratedRecipeItem = {
-      ...recipe,
-      createdAt: new Date().toISOString(),
+  const removeGeneratedRecipe = useCallback(async (id: string) => {
+    if (!user) return
+
+    try {
+      const { error } = await supabase
+        .from('user_generated_recipes')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id)
+
+      if (error) {
+        console.error('Failed to delete generated recipe:', error)
+        return
+      }
+
+      setGeneratedRecipes(prev => prev.filter(r => r.id !== id))
+    } catch (e) {
+      console.error('Failed to delete generated recipe:', e)
     }
-
-    setGeneratedRecipes(prev => {
-      // Check if recipe already exists (by ID)
-      const exists = prev.some(r => r.id === recipe.id)
-      if (exists) return prev
-
-      const updated = [newRecipe, ...prev]
-      saveToStorage(updated)
-      return updated
-    })
-  }, [saveToStorage])
-
-  const removeGeneratedRecipe = useCallback((id: string) => {
-    setGeneratedRecipes(prev => {
-      const updated = prev.filter(r => r.id !== id)
-      saveToStorage(updated)
-      return updated
-    })
-  }, [saveToStorage])
+  }, [user, supabase])
 
   const getRecipesByCategory = useCallback((category: string): GeneratedRecipeItem[] => {
     const normalizedCategory = category.toLowerCase()
@@ -108,10 +221,25 @@ export function GeneratedRecipesProvider({ children }: { children: ReactNode }) 
     return generatedRecipes.slice(0, limit)
   }, [generatedRecipes])
 
-  const clearAllRecipes = useCallback(() => {
-    setGeneratedRecipes([])
-    saveToStorage([])
-  }, [saveToStorage])
+  const clearAllRecipes = useCallback(async () => {
+    if (!user) return
+
+    try {
+      const { error } = await supabase
+        .from('user_generated_recipes')
+        .delete()
+        .eq('user_id', user.id)
+
+      if (error) {
+        console.error('Failed to clear generated recipes:', error)
+        return
+      }
+
+      setGeneratedRecipes([])
+    } catch (e) {
+      console.error('Failed to clear generated recipes:', e)
+    }
+  }, [user, supabase])
 
   return (
     <GeneratedRecipesContext.Provider
@@ -122,6 +250,7 @@ export function GeneratedRecipesProvider({ children }: { children: ReactNode }) 
         getRecipesByCategory,
         getNewRecipes,
         clearAllRecipes,
+        loading,
       }}
     >
       {children}
