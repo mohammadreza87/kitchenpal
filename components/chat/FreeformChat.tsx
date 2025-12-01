@@ -151,15 +151,17 @@ export function FreeformChat() {
 
   // Scroll to bottom when messages change
   useEffect(() => {
-    if (messagesEndRef.current) {
-      if (!hasScrolledOnce.current) {
+    const scrollToBottom = () => {
+      if (messagesEndRef.current) {
+        const behavior = hasScrolledOnce.current ? 'smooth' : 'auto'
         hasScrolledOnce.current = true
-        messagesEndRef.current.scrollIntoView({ behavior: 'auto', block: 'end' })
-        return
+        messagesEndRef.current.scrollIntoView({ behavior, block: 'nearest' })
       }
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' })
     }
-  }, [messages, selectedOption, selectedOptions])
+    // Small delay to ensure DOM is updated
+    const timeoutId = setTimeout(scrollToBottom, 50)
+    return () => clearTimeout(timeoutId)
+  }, [messages, selectedOption, selectedOptions, isGenerating])
 
   // Animate new messages (skip initial load)
   const isInitialLoad = useRef(true)
@@ -538,8 +540,8 @@ export function FreeformChat() {
         </div>
       </div>
 
-        {/* Messages Area - with top padding for fixed header */}
-        <div ref={containerRef} className="flex-1 px-4 pt-24 pb-6">
+        {/* Messages Area - with top padding for fixed header and bottom for fixed input */}
+        <div ref={containerRef} className="flex-1 px-4 pt-24 pb-32">
         {/* Messages */}
         {messages.map((message) => (
           <div
@@ -661,7 +663,7 @@ export function FreeformChat() {
           </div>
         )}
 
-        <div ref={messagesEndRef} />
+        <div ref={messagesEndRef} className="h-4" />
       </div>
 
         <ChatInput onSend={(message) => {
