@@ -5,105 +5,36 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Switch } from '@/components/ui/Switch'
 import { gsap } from '@/lib/gsap'
-import { cn } from '@/lib/utils'
-
-type Device = {
-  id: string
-  name: string
-  location: string
-  lastSeen: string
-  current?: boolean
-}
-
-const devices: Device[] = [
-  {
-    id: 'current',
-    name: 'iPhone 15 Pro',
-    location: 'Amsterdam · Active now',
-    lastSeen: 'Primary device',
-    current: true,
-  },
-  {
-    id: 'mac',
-    name: 'MacBook Air',
-    location: 'Amsterdam · 2 hours ago',
-    lastSeen: 'Trusted device',
-  },
-  {
-    id: 'ipad',
-    name: 'iPad Mini',
-    location: 'Rotterdam · 3 days ago',
-    lastSeen: 'Remembered device',
-  },
-]
-
-interface DeviceCardProps {
-  device: Device
-  onSignOut: (id: string) => void
-}
-
-function DeviceCard({ device, onSignOut }: DeviceCardProps) {
-  return (
-    <div
-      className={cn(
-        'mb-3 rounded-2xl border bg-white px-4 py-3',
-        device.current ? 'border-brand-primary' : 'border-gray-200'
-      )}
-      style={{ borderColor: device.current ? '#FF7043' : '#e5e7eb' }}
-    >
-      <div className="flex items-start justify-between">
-        <div className="flex gap-3">
-          <div
-            className={cn(
-              'flex h-11 w-11 items-center justify-center rounded-2xl',
-              device.current ? 'bg-amber-100' : 'bg-gray-100'
-            )}
-          >
-            <Image
-              src={device.current ? '/assets/icons/Lock-2.svg' : '/assets/icons/Global.svg'}
-              alt=""
-              width={22}
-              height={22}
-              style={device.current ? { filter: 'invert(52%) sepia(67%) saturate(1042%) hue-rotate(346deg) brightness(101%) contrast(97%)' } : {}}
-            />
-          </div>
-          <div>
-            <p className="text-base font-semibold" style={{ color: '#363636' }}>
-              {device.name}
-            </p>
-            <p className="text-sm" style={{ color: '#656565' }}>
-              {device.location}
-            </p>
-            <p className="mt-1 text-xs font-medium" style={{ color: '#332B10' }}>
-              {device.lastSeen}
-            </p>
-          </div>
-        </div>
-        {!device.current && (
-          <button
-            onClick={() => onSignOut(device.id)}
-            className="rounded-full border px-3 py-2 text-sm font-medium transition-all hover:bg-brand-primary/5 active:scale-[0.98]"
-            style={{ borderColor: '#ffc5b4', color: '#FF7043' }}
-          >
-            Sign out
-          </button>
-        )}
-      </div>
-    </div>
-  )
-}
+import { useSecuritySettings } from '@/hooks/useSecuritySettings'
+import { DeviceCard, SecuritySkeleton, MFASetupModal } from '@/components/profile'
 
 export default function SecurityAndPrivacyPage() {
   const containerRef = useRef<HTMLDivElement>(null)
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(true)
-  const [loginAlerts, setLoginAlerts] = useState(true)
-  const [biometricLock, setBiometricLock] = useState(false)
-  const [dataPersonalization, setDataPersonalization] = useState(true)
-  const [usageAnalytics, setUsageAnalytics] = useState(true)
-  const [privateMode, setPrivateMode] = useState(false)
+  const [showDisableMFAConfirm, setShowDisableMFAConfirm] = useState(false)
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
+
+  const {
+    settings,
+    sessions,
+    mfaEnrollment,
+    loading,
+    startMFAEnrollment,
+    verifyMFAEnrollment,
+    cancelMFAEnrollment,
+    disableMFA,
+    toggleLoginAlerts,
+    toggleBiometricLock,
+    toggleDataPersonalization,
+    toggleUsageAnalytics,
+    togglePrivateMode,
+    signOutSession,
+    signOutAllOtherSessions,
+    requestDataExport,
+    requestDataDeletion,
+  } = useSecuritySettings()
 
   useEffect(() => {
-    if (!containerRef.current) return
+    if (!containerRef.current || loading) return
 
     const sections = containerRef.current.querySelectorAll('[data-animate]')
 
@@ -118,11 +49,115 @@ export default function SecurityAndPrivacyPage() {
         ease: 'power2.out',
       }
     )
-  }, [])
+  }, [loading])
 
-  const handleSignOutDevice = (id: string) => {
-    console.info(`Sign out requested for device: ${id}`)
+
+  const handleToggle2FA = async (enabled: boolean) => {
+    if (enabled) {
+      setActionLoading('2fa')
+      try {
+        await startMFAEnrollment()
+      } catch (error) {
+        console.error('Failed to start MFA enrollment:', error)
+        alert('Failed to start 2FA setup. Please try again.')
+      } finally {
+        setActionLoading(null)
+      }
+    } else {
+      setShowDisableMFAConfirm(true)
+    }
   }
+
+  const handleConfirmDisableMFA = async () => {
+    setActionLoading('2fa')
+    try {
+      await disableMFA()
+      setShowDisableMFAConfirm(false)
+    } catch (error) {
+      console.error('Failed to disable MFA:', error)
+      alert('Failed to disable 2FA. Please try again.')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleVerifyMFA = async (code: string) => {
+    await verifyMFAEnrollment(code)
+    return true
+  }
+
+  const handleSignOutDevice = async (id: string) => {
+    setActionLoading(`session-${id}`)
+    try {
+      await signOutSession(id)
+    } catch (error) {
+      console.error('Failed to sign out device:', error)
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleSignOutAllOther = async () => {
+    const currentSession = sessions.find(s => s.is_current)
+    if (currentSession) {
+      setActionLoading('signout-all')
+      try {
+        await signOutAllOtherSessions(currentSession.id)
+      } catch (error) {
+        console.error('Failed to sign out other sessions:', error)
+      } finally {
+        setActionLoading(null)
+      }
+    }
+  }
+
+  const handleDataExport = async () => {
+    setActionLoading('export')
+    try {
+      const message = await requestDataExport()
+      alert(message)
+    } catch (error) {
+      console.error('Failed to export data:', error)
+      alert('Failed to export data. Please try again.')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleDataDeletion = async () => {
+    if (confirm('Are you sure you want to request account deletion? This action cannot be undone.')) {
+      setActionLoading('delete')
+      try {
+        const message = await requestDataDeletion()
+        alert(message)
+      } catch (error) {
+        console.error('Failed to request data deletion:', error)
+        alert('Failed to submit deletion request. Please try again.')
+      } finally {
+        setActionLoading(null)
+      }
+    }
+  }
+
+  if (loading) {
+    return <SecuritySkeleton />
+  }
+
+  // Format sessions for display
+  const displaySessions = sessions.length > 0 ? sessions : [
+    {
+      id: 'current',
+      user_id: '',
+      device_name: 'Current Device',
+      device_type: null,
+      location: 'Active now',
+      ip_address: null,
+      last_seen: new Date().toISOString(),
+      is_current: true,
+      created_at: new Date().toISOString(),
+    }
+  ]
+
 
   return (
     <div className="relative min-h-screen bg-background">
@@ -144,6 +179,18 @@ export default function SecurityAndPrivacyPage() {
           Security & Privacy
         </h1>
 
+        {/* Deletion Warning Banner */}
+        {settings?.deletion_requested_at && (
+          <div data-animate className="mb-6 rounded-2xl bg-red-50 p-4">
+            <p className="text-sm font-medium text-red-600">
+              Account deletion requested on {new Date(settings.deletion_requested_at).toLocaleDateString()}
+            </p>
+            <p className="mt-1 text-xs text-red-500">
+              Your account will be deleted within 30 days. Contact support to cancel.
+            </p>
+          </div>
+        )}
+
         {/* Account Protection Section */}
         <section data-animate className="mb-8">
           <h2 className="mb-6 text-lg font-semibold" style={{ color: '#332B10' }}>
@@ -156,10 +203,16 @@ export default function SecurityAndPrivacyPage() {
                   Two-factor authentication
                 </p>
                 <p className="text-sm" style={{ color: '#656565' }}>
-                  Require a code on new devices
+                  {settings?.two_factor_enabled
+                    ? 'Enabled via authenticator app'
+                    : 'Require a code on new devices'}
                 </p>
               </div>
-              <Switch checked={twoFactorEnabled} onCheckedChange={setTwoFactorEnabled} />
+              <Switch
+                checked={settings?.two_factor_enabled ?? false}
+                onCheckedChange={handleToggle2FA}
+                disabled={actionLoading === '2fa'}
+              />
             </div>
             <div className="h-px w-full bg-gray-100" />
             <div className="flex items-center justify-between">
@@ -171,7 +224,10 @@ export default function SecurityAndPrivacyPage() {
                   Get notified of new sessions
                 </p>
               </div>
-              <Switch checked={loginAlerts} onCheckedChange={setLoginAlerts} />
+              <Switch
+                checked={settings?.login_alerts ?? true}
+                onCheckedChange={(checked) => toggleLoginAlerts(checked)}
+              />
             </div>
             <div className="h-px w-full bg-gray-100" />
             <div className="flex items-center justify-between">
@@ -183,11 +239,15 @@ export default function SecurityAndPrivacyPage() {
                   Use Face ID or fingerprint
                 </p>
               </div>
-              <Switch checked={biometricLock} onCheckedChange={setBiometricLock} />
+              <Switch
+                checked={settings?.biometric_lock ?? false}
+                onCheckedChange={(checked) => toggleBiometricLock(checked)}
+              />
             </div>
             <div className="h-px w-full bg-gray-100" />
           </div>
         </section>
+
 
         {/* Privacy Controls Section */}
         <section data-animate className="mb-8">
@@ -204,7 +264,10 @@ export default function SecurityAndPrivacyPage() {
                   Tailor recipes to your taste
                 </p>
               </div>
-              <Switch checked={dataPersonalization} onCheckedChange={setDataPersonalization} />
+              <Switch
+                checked={settings?.data_personalization ?? true}
+                onCheckedChange={(checked) => toggleDataPersonalization(checked)}
+              />
             </div>
             <div className="h-px w-full bg-gray-100" />
             <div className="flex items-center justify-between">
@@ -216,7 +279,10 @@ export default function SecurityAndPrivacyPage() {
                   Help us improve the app
                 </p>
               </div>
-              <Switch checked={usageAnalytics} onCheckedChange={setUsageAnalytics} />
+              <Switch
+                checked={settings?.usage_analytics ?? true}
+                onCheckedChange={(checked) => toggleUsageAnalytics(checked)}
+              />
             </div>
             <div className="h-px w-full bg-gray-100" />
             <div className="flex items-center justify-between">
@@ -228,7 +294,10 @@ export default function SecurityAndPrivacyPage() {
                   Hide history and previews
                 </p>
               </div>
-              <Switch checked={privateMode} onCheckedChange={setPrivateMode} />
+              <Switch
+                checked={settings?.private_mode ?? false}
+                onCheckedChange={(checked) => togglePrivateMode(checked)}
+              />
             </div>
             <div className="h-px w-full bg-gray-100" />
           </div>
@@ -239,13 +308,27 @@ export default function SecurityAndPrivacyPage() {
           <h2 className="mb-4 text-lg font-semibold" style={{ color: '#332B10' }}>
             Sessions & Devices
           </h2>
-          {devices.map((device) => (
-            <DeviceCard key={device.id} device={device} onSignOut={handleSignOutDevice} />
+          {displaySessions.map((session) => (
+            <DeviceCard
+              key={session.id}
+              id={session.id}
+              name={session.device_name}
+              location={session.location || 'Unknown location'}
+              lastSeen={session.is_current ? 'Primary device' : `Last seen: ${new Date(session.last_seen).toLocaleDateString()}`}
+              isCurrent={session.is_current}
+              onSignOut={handleSignOutDevice}
+              loading={actionLoading === `session-${session.id}`}
+            />
           ))}
-          <button className="mt-2 w-full rounded-full bg-amber-100 py-3.5 text-base font-medium text-foreground transition-all hover:bg-amber-200 active:scale-[0.98]">
-            Sign out of all other sessions
+          <button
+            onClick={handleSignOutAllOther}
+            disabled={actionLoading === 'signout-all' || displaySessions.length <= 1}
+            className="mt-2 w-full rounded-full bg-amber-100 py-3.5 text-base font-medium text-foreground transition-all hover:bg-amber-200 active:scale-[0.98] disabled:opacity-50"
+          >
+            {actionLoading === 'signout-all' ? 'Signing out...' : 'Sign out of all other sessions'}
           </button>
         </section>
+
 
         {/* Your Data Section */}
         <section data-animate className="mb-8">
@@ -253,17 +336,31 @@ export default function SecurityAndPrivacyPage() {
             Your Data
           </h2>
           <div className="space-y-3">
-            <button className="w-full rounded-2xl border bg-white px-4 py-4 text-left transition-all hover:border-gray-300" style={{ borderColor: '#e5e7eb' }}>
+            <button
+              onClick={handleDataExport}
+              disabled={actionLoading === 'export'}
+              className="w-full rounded-2xl border bg-white px-4 py-4 text-left transition-all hover:border-gray-300 disabled:opacity-50"
+              style={{ borderColor: '#e5e7eb' }}
+            >
               <p className="text-base font-medium" style={{ color: '#282828' }}>
-                Download my data
+                {actionLoading === 'export' ? 'Preparing download...' : 'Download my data'}
               </p>
               <p className="text-sm" style={{ color: '#656565' }}>
                 Export your recipes, history, and preferences
               </p>
             </button>
-            <button className="w-full rounded-2xl border bg-white px-4 py-4 text-left transition-all hover:border-red-300" style={{ borderColor: '#e5e7eb' }}>
+            <button
+              onClick={handleDataDeletion}
+              disabled={actionLoading === 'delete' || !!settings?.deletion_requested_at}
+              className="w-full rounded-2xl border bg-white px-4 py-4 text-left transition-all hover:border-red-300 disabled:opacity-50"
+              style={{ borderColor: '#e5e7eb' }}
+            >
               <p className="text-base font-medium" style={{ color: '#E53935' }}>
-                Request data deletion
+                {settings?.deletion_requested_at
+                  ? 'Deletion already requested'
+                  : actionLoading === 'delete'
+                    ? 'Submitting request...'
+                    : 'Request data deletion'}
               </p>
               <p className="text-sm" style={{ color: '#656565' }}>
                 Close your account and erase personal data
@@ -298,6 +395,44 @@ export default function SecurityAndPrivacyPage() {
           </div>
         </section>
       </div>
+
+      {/* MFA Setup Modal */}
+      <MFASetupModal
+        isOpen={!!mfaEnrollment}
+        enrollment={mfaEnrollment}
+        onVerify={handleVerifyMFA}
+        onCancel={cancelMFAEnrollment}
+      />
+
+      {/* Disable MFA Confirmation Modal */}
+      {showDisableMFAConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-xl">
+            <h3 className="mb-2 text-lg font-bold" style={{ color: '#282828' }}>
+              Disable Two-Factor Authentication?
+            </h3>
+            <p className="mb-6 text-sm" style={{ color: '#656565' }}>
+              This will make your account less secure. You can always re-enable it later.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDisableMFAConfirm(false)}
+                className="flex-1 rounded-full border border-gray-200 py-3 text-base font-medium transition-colors hover:bg-gray-50"
+                style={{ color: '#434343' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDisableMFA}
+                disabled={actionLoading === '2fa'}
+                className="flex-1 rounded-full bg-red-500 py-3 text-base font-semibold text-white transition-all hover:bg-red-600 active:scale-[0.98] disabled:opacity-50"
+              >
+                {actionLoading === '2fa' ? 'Disabling...' : 'Disable'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

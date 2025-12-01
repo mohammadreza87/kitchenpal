@@ -1,17 +1,12 @@
 'use client'
 
-import { useState } from 'react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
-
-const skillLevels = [
-  { id: 'beginner', label: 'Beginner', icon: '/assets/icons/Beginner.svg' },
-  { id: 'enthusiast', label: 'Enthusiast', icon: '/assets/icons/Enthusiast.svg' },
-  { id: 'advanced', label: 'Advanced', icon: '/assets/icons/Advanced.svg' },
-]
+import { cookingSkillLevels } from '@/lib/constants/preferences'
+import { useOnboardingPreferences } from '@/hooks/useOnboardingPreferences'
 
 export default function CookingSkillsPage() {
-  const [selectedSkill, setSelectedSkill] = useState<string | null>(null)
+  const { cookingSkill, setCookingSkill } = useOnboardingPreferences()
 
   return (
     <>
@@ -22,13 +17,13 @@ export default function CookingSkillsPage() {
         </p>
 
         <div className="flex flex-wrap gap-3">
-          {skillLevels.map((skill) => {
-            const isSelected = selectedSkill === skill.id
+          {cookingSkillLevels.map((skill) => {
+            const isSelected = cookingSkill === skill.id
             return (
               <button
                 key={skill.id}
                 type="button"
-                onClick={() => setSelectedSkill(skill.id)}
+                onClick={() => setCookingSkill(skill.id)}
                 className={cn(
                   'inline-flex items-center gap-2 rounded-full border px-4 py-2 transition-all duration-200 active:scale-95',
                   isSelected
@@ -36,7 +31,6 @@ export default function CookingSkillsPage() {
                     : 'border-gray-200 bg-white hover:border-gray-300'
                 )}
               >
-                {/* Icon with checkmark overlay */}
                 <div className="relative h-8 w-8 flex-shrink-0">
                   <Image
                     src={skill.icon}
@@ -48,7 +42,6 @@ export default function CookingSkillsPage() {
                       isSelected && 'scale-90 opacity-30'
                     )}
                   />
-                  {/* Checkmark overlay - centered on image */}
                   <div
                     className={cn(
                       'absolute inset-0 flex items-center justify-center transition-all duration-200',

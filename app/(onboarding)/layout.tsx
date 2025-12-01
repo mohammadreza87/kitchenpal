@@ -4,6 +4,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useRef, useEffect, useState } from 'react'
 import Image from 'next/image'
 import { gsap } from '@/lib/gsap'
+import { useOnboardingPreferences } from '@/hooks/useOnboardingPreferences'
 
 const steps = [
   { path: '/preferences', progress: 25, nextPath: '/cuisine', buttonText: 'Next' },
@@ -22,10 +23,12 @@ export default function OnboardingLayout({
   const progressRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const [isAnimating, setIsAnimating] = useState(false)
+  const { saveToDatabase, saving, isAuthenticated } = useOnboardingPreferences()
 
   const currentStepIndex = steps.findIndex((step) => step.path === pathname)
   const currentStep = steps[currentStepIndex] || steps[0]
   const isFirstStep = currentStepIndex === 0
+  const isLastStep = currentStepIndex === steps.length - 1
 
   // Prefetch next page
   useEffect(() => {
@@ -77,9 +80,19 @@ export default function OnboardingLayout({
     }
   }
 
-  const handleNext = () => {
-    if (isAnimating) return
+  const handleNext = async () => {
+    if (isAnimating || saving) return
     setIsAnimating(true)
+
+    // If last step and authenticated, save to database
+    if (isLastStep && isAuthenticated) {
+      try {
+        await saveToDatabase()
+      } catch (error) {
+        console.error('Failed to save preferences:', error)
+        // Continue anyway - preferences are saved locally
+      }
+    }
 
     if (contentRef.current) {
       gsap.to(contentRef.current, {
@@ -105,14 +118,14 @@ export default function OnboardingLayout({
   return (
     <div className="flex h-[100dvh] flex-col bg-background">
       {/* Header - Back button and Progress bar */}
-      <div className="mx-auto w-full max-w-md flex-shrink-0 px-6 pt-8">
+      <div className="mx-auto w-full flex-shrink-0 px-6 pt-8">
         {/* Back Button or Spacer */}
         {isFirstStep ? (
           <div className="mb-4 h-10" />
         ) : (
           <button
             onClick={handleBack}
-            disabled={isAnimating}
+            disabled={isAnimating || saving}
             className="mb-4 flex h-10 w-10 items-center justify-center rounded-full hover:bg-muted transition-colors disabled:opacity-50"
           >
             <Image
@@ -135,7 +148,7 @@ export default function OnboardingLayout({
           </div>
           <button
             onClick={handleSkip}
-            disabled={isAnimating}
+            disabled={isAnimating || saving}
             className="text-sm font-medium text-brand-primary hover:underline disabled:opacity-50"
           >
             Skip
@@ -145,20 +158,20 @@ export default function OnboardingLayout({
 
       {/* Scrollable Content Area */}
       <div className="flex-1 overflow-y-auto scrollbar-hide">
-        <div className="mx-auto w-full max-w-md px-6 pb-24">
+        <div className="mx-auto w-full px-6 pb-24">
           <div ref={contentRef}>{children}</div>
         </div>
       </div>
 
       {/* Fixed Bottom Button */}
       <div className="flex-shrink-0 border-t border-gray-100 bg-background px-6 py-4">
-        <div className="mx-auto max-w-md">
+        <div className="mx-auto">
           <button
             onClick={handleNext}
-            disabled={isAnimating}
+            disabled={isAnimating || saving}
             className="w-full rounded-full bg-brand-primary py-4 font-medium text-white transition-colors hover:bg-brand-primary-dark disabled:opacity-50"
           >
-            {currentStep.buttonText}
+            {saving ? 'Saving...' : currentStep.buttonText}
           </button>
         </div>
       </div>

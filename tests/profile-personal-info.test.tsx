@@ -1,30 +1,93 @@
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { vi, describe, it, expect, beforeEach } from 'vitest'
 import PersonalInfoPage from '@/app/(main)/profile/personal-info/page'
 
-describe('PersonalInfoPage', () => {
-  it('shows the profile summary by default', () => {
-    render(<PersonalInfoPage />)
+// Mock profile data
+const mockProfile = {
+  id: 'test-user-id',
+  email: 'hannah.1989@gmail.com',
+  full_name: 'Hannah Andrew',
+  avatar_url: '/assets/illustrations/avatar-placeholder.svg',
+  phone: '+31612222222',
+  location: 'Amsterdam, Netherlands',
+  bio: 'I love cooking!',
+  created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-01-01T00:00:00Z',
+}
 
-    expect(screen.getByRole('heading', { name: 'Profile' })).toBeInTheDocument()
+const mockSocialLinks = {
+  id: 'social-id',
+  user_id: 'test-user-id',
+  website: 'https://example.com',
+  instagram: '@hannah',
+  youtube: null,
+  tiktok: null,
+  created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-01-01T00:00:00Z',
+}
+
+const mockUseProfile = vi.fn()
+
+vi.mock('@/hooks/useProfile', () => ({
+  useProfile: () => mockUseProfile(),
+}))
+
+describe('PersonalInfoPage', () => {
+  const defaultMockReturn = {
+    profile: mockProfile,
+    socialLinks: mockSocialLinks,
+    loading: false,
+    error: null,
+    updateProfile: vi.fn().mockResolvedValue(mockProfile),
+    updateSocialLinks: vi.fn().mockResolvedValue(mockSocialLinks),
+    uploadAvatar: vi.fn(),
+    refetch: vi.fn(),
+  }
+
+  beforeEach(() => {
+    mockUseProfile.mockReturnValue(defaultMockReturn)
+  })
+
+  it('renders page title', () => {
+    render(<PersonalInfoPage />)
+    expect(screen.getByText('Personal Information')).toBeInTheDocument()
+  })
+
+  it('displays user name', () => {
+    render(<PersonalInfoPage />)
     expect(screen.getByText('Hannah Andrew')).toBeInTheDocument()
+  })
+
+  it('displays user email', () => {
+    render(<PersonalInfoPage />)
     expect(screen.getByText('hannah.1989@gmail.com')).toBeInTheDocument()
+  })
+
+  it('displays user phone', () => {
+    render(<PersonalInfoPage />)
     expect(screen.getByText('+31612222222')).toBeInTheDocument()
+  })
+
+  it('displays user location', () => {
+    render(<PersonalInfoPage />)
     expect(screen.getByText('Amsterdam, Netherlands')).toBeInTheDocument()
   })
 
-  it('enters edit mode and exposes editable fields', async () => {
+  it('renders profile avatar', () => {
     render(<PersonalInfoPage />)
+    const avatar = screen.getByAltText('Profile')
+    expect(avatar).toBeInTheDocument()
+  })
 
-    const editButtons = screen.getAllByRole('button', { name: /edit/i })
-    await userEvent.click(editButtons[0])
+  it('shows loading skeleton when loading', () => {
+    mockUseProfile.mockReturnValue({
+      ...defaultMockReturn,
+      profile: null,
+      loading: true,
+    })
 
-    expect(screen.getByRole('heading', { name: 'Edit Personal Information' })).toBeInTheDocument()
-
-    const inputs = screen.getAllByRole('textbox')
-    expect(inputs[0]).toHaveValue('Hannah Andrew')
-    expect(inputs[1]).toHaveValue('hannah.1989@gmail.com')
-    expect(inputs[2]).toHaveValue('+31612222222')
-    expect(inputs[3]).toHaveValue('Amsterdam, Netherlands')
+    render(<PersonalInfoPage />)
+    expect(screen.queryByText('Personal Information')).not.toBeInTheDocument()
+    expect(document.querySelector('.animate-pulse')).toBeInTheDocument()
   })
 })

@@ -3,17 +3,19 @@
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useRef, useEffect } from 'react'
-import { ProfileMenuItem } from '@/components/profile/ProfileMenuItem'
+import { ProfileMenuItem, ProfileSkeleton } from '@/components/profile'
+import { useProfile } from '@/hooks/useProfile'
 import { createClient } from '@/lib/supabase/client'
 import { gsap } from '@/lib/gsap'
 
 export default function ProfilePage() {
   const router = useRouter()
+  const { profile, loading } = useProfile()
   const supabase = createClient()
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (!containerRef.current) return
+    if (!containerRef.current || loading) return
 
     const sections = containerRef.current.querySelectorAll('[data-animate]')
 
@@ -28,12 +30,20 @@ export default function ProfilePage() {
         ease: 'power2.out',
       }
     )
-  }, [])
+  }, [loading])
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     router.push('/login')
   }
+
+  if (loading) {
+    return <ProfileSkeleton />
+  }
+
+  const displayName = profile?.full_name || 'Kitchen Pal User'
+  const displayBio = profile?.bio || 'I love to cook amazing food!'
+  const avatarUrl = profile?.avatar_url || '/assets/illustrations/avatar-placeholder.svg'
 
   return (
     <div ref={containerRef} className="mx-auto w-full max-w-md px-6 py-8">
@@ -44,15 +54,15 @@ export default function ProfilePage() {
       <div data-animate className="mb-6 flex items-center gap-4">
         <div className="relative h-16 w-16 overflow-hidden rounded-full bg-gray-200">
           <Image
-            src="/assets/illustrations/avatar-placeholder.svg"
+            src={avatarUrl}
             alt="Profile"
             fill
             className="object-cover"
           />
         </div>
         <div>
-          <h2 className="text-lg font-semibold" style={{ color: '#282828' }}>Hannah Andrew</h2>
-          <p className="text-sm" style={{ color: '#656565' }}>I love to cook amazing food!</p>
+          <h2 className="text-lg font-semibold" style={{ color: '#282828' }}>{displayName}</h2>
+          <p className="text-sm" style={{ color: '#656565' }}>{displayBio}</p>
         </div>
       </div>
 

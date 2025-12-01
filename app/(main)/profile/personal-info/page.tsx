@@ -1,435 +1,44 @@
 'use client'
 
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { gsap } from '@/lib/gsap'
+import { useProfile } from '@/hooks/useProfile'
+import {
+  InfoItem,
+  EditableInfoItem,
+  SocialItem,
+  PersonalInfoSkeleton,
+  AboutYouModal,
+  SocialEditModal
+} from '@/components/profile'
+import type { SocialLinks } from '@/types/database'
 
-// Mock user data - in real app, this would come from user's profile/database
-const initialUserData = {
-  name: 'Hannah Andrew',
-  email: 'hannah.1989@gmail.com',
-  phone: '+31612222222',
-  location: 'Amsterdam, Netherlands',
-  bio: '',
-  avatarUrl: '/assets/illustrations/avatar-placeholder.svg',
-}
-
-interface EditableInfoItemProps {
-  icon: string
-  label: string
-  value: string
-  onChange: (value: string) => void
-  type?: string
-}
-
-function EditableInfoItem({ icon, label, value, onChange, type = 'text' }: EditableInfoItemProps) {
-  return (
-    <div className="mb-4 rounded-2xl bg-gray-100 px-4 py-3">
-      <div className="flex items-center gap-4">
-        <Image
-          src={icon}
-          alt=""
-          width={24}
-          height={24}
-          className="opacity-60"
-        />
-        <div className="flex-1">
-          <label
-            className="block text-xs font-medium mb-1"
-            style={{ color: '#FF7043' }}
-          >
-            {label}
-          </label>
-          <input
-            type={type}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-full text-base bg-transparent border-none outline-none pb-1"
-            style={{
-              color: '#363636',
-              borderBottom: '2px solid #FF7043',
-            }}
-          />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-interface AboutYouModalProps {
-  isOpen: boolean
-  onClose: () => void
-  initialValue: string
-  onSave: (value: string) => void
-}
-
-function AboutYouModal({ isOpen, onClose, initialValue, onSave }: AboutYouModalProps) {
-  const [value, setValue] = useState(initialValue)
-  const [isFocused, setIsFocused] = useState(false)
-  const maxLength = 225
-  const modalRef = useRef<HTMLDivElement>(null)
-  const backdropRef = useRef<HTMLDivElement>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden'
-      gsap.fromTo(backdropRef.current, { opacity: 0 }, { opacity: 1, duration: 0.2 })
-      gsap.fromTo(modalRef.current, { y: '100%' }, {
-        y: 0,
-        duration: 0.3,
-        ease: 'power2.out',
-        onComplete: () => {
-          setTimeout(() => {
-            textareaRef.current?.focus()
-          }, 50)
-        }
-      })
-    }
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [isOpen])
-
-  const handleClose = () => {
-    gsap.to(backdropRef.current, { opacity: 0, duration: 0.2 })
-    gsap.to(modalRef.current, { y: '100%', duration: 0.2, ease: 'power2.in', onComplete: onClose })
-  }
-
-  const handleSave = () => {
-    onSave(value)
-    handleClose()
-  }
-
-  if (!isOpen) return null
-
-  return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
-      {/* Backdrop */}
-      <div
-        ref={backdropRef}
-        className="absolute inset-0 bg-black/50"
-        onClick={handleClose}
-      />
-
-      {/* Modal - fixed to bottom */}
-      <div
-        ref={modalRef}
-        className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl px-6 pt-6"
-        style={{ paddingBottom: 'calc(max(env(safe-area-inset-bottom), 24px) + 80px)', maxHeight: '85vh' }}
-      >
-        {/* Close Button */}
-        <button
-          onClick={handleClose}
-          className="mb-4 flex h-10 w-10 items-center justify-center rounded-full hover:bg-muted transition-colors"
-        >
-          <Image
-            src="/assets/icons/X-Circle.svg"
-            alt="Close"
-            width={24}
-            height={24}
-          />
-        </button>
-
-        {/* Title */}
-        <h2 className="mb-1 text-xl font-semibold" style={{ color: '#282828' }}>
-          About you
-        </h2>
-        <p className="mb-3 text-sm" style={{ color: '#656565' }}>
-          Share a bit about yourself! Your cooking story, favorite recipes, or just something fun.
-        </p>
-
-        {/* Textarea */}
-        <div className="relative mb-1">
-          <div className="absolute left-4 top-4 z-10">
-            <Image
-              src="/assets/icons/Edit-2.svg"
-              alt=""
-              width={20}
-              height={20}
-              className="opacity-40"
-            />
-          </div>
-          <textarea
-            ref={textareaRef}
-            value={value}
-            onChange={(e) => setValue(e.target.value.slice(0, maxLength))}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
-            placeholder="Write something punchy."
-            className="w-full rounded-lg bg-white pl-12 pr-4 pt-4 pb-4 text-base resize-none focus:outline-none transition-all"
-            style={{
-              border: value ? '3px solid #FF7043' : '2px solid #e5e7eb',
-              height: '100px'
-            }}
-          />
-        </div>
-
-        {/* Character Counter */}
-        <div className="text-right mb-4">
-          <span className="text-sm" style={{ color: '#656565' }}>
-            {value.length}/{maxLength}
-          </span>
-        </div>
-
-        {/* Save Button */}
-        <button
-          onClick={handleSave}
-          disabled={value === initialValue}
-          className={`w-full rounded-full py-3.5 font-medium transition-all ${
-            value === initialValue
-              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-              : 'bg-amber-100 text-foreground hover:bg-amber-200 active:scale-[0.98]'
-          }`}
-        >
-          Save
-        </button>
-      </div>
-    </div>
-  )
-}
-
-interface InfoItemProps {
-  icon: string
-  value: string
-}
-
-function InfoItem({ icon, value }: InfoItemProps) {
-  return (
-    <div
-      className="flex items-center gap-4 py-4 border-b"
-      style={{ borderColor: '#c8c8c8' }}
-    >
-      <Image
-        src={icon}
-        alt=""
-        width={24}
-        height={24}
-      />
-      <span className="text-base" style={{ color: '#363636' }}>{value}</span>
-    </div>
-  )
-}
-
-interface SocialEditModalProps {
-  isOpen: boolean
-  onClose: () => void
-  title: string
-  icon: string
-  placeholder: string
-  initialValue: string
-  onSave: (value: string) => void
-}
-
-function SocialEditModal({ isOpen, onClose, title, icon, placeholder, initialValue, onSave }: SocialEditModalProps) {
-  const [value, setValue] = useState(initialValue)
-  const [isFocused, setIsFocused] = useState(false)
-  const modalRef = useRef<HTMLDivElement>(null)
-  const backdropRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  const hasValue = value.length > 0
-  const isFloating = hasValue // Only float when there's a value, not on focus
-
-  useEffect(() => {
-    setValue(initialValue)
-  }, [initialValue, isOpen])
-
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden'
-      gsap.fromTo(backdropRef.current, { opacity: 0 }, { opacity: 1, duration: 0.2 })
-      gsap.fromTo(modalRef.current, { y: '100%' }, {
-        y: 0,
-        duration: 0.3,
-        ease: 'power2.out',
-        onComplete: () => {
-          setTimeout(() => {
-            inputRef.current?.focus()
-          }, 50)
-        }
-      })
-    }
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [isOpen])
-
-  const handleClose = () => {
-    gsap.to(backdropRef.current, { opacity: 0, duration: 0.2 })
-    gsap.to(modalRef.current, { y: '100%', duration: 0.2, ease: 'power2.in', onComplete: onClose })
-  }
-
-  const handleSave = () => {
-    onSave(value)
-    handleClose()
-  }
-
-  const hasChanges = value !== initialValue
-
-  if (!isOpen) return null
-
-  return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
-      {/* Backdrop */}
-      <div
-        ref={backdropRef}
-        className="absolute inset-0 bg-black/50"
-        onClick={handleClose}
-      />
-
-      {/* Modal - fixed to bottom, will float with keyboard */}
-      <div
-        ref={modalRef}
-        className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl px-6 pt-6"
-        style={{ paddingBottom: 'calc(max(env(safe-area-inset-bottom), 24px) + 80px)' }}
-      >
-        {/* Close Button */}
-        <button
-          onClick={handleClose}
-          className="mb-6 flex h-10 w-10 items-center justify-center rounded-full hover:bg-muted transition-colors"
-        >
-          <Image
-            src="/assets/icons/X-Circle.svg"
-            alt="Close"
-            width={24}
-            height={24}
-          />
-        </button>
-
-        {/* Title */}
-        <h2 className="mb-6 text-xl font-semibold text-center" style={{ color: '#282828' }}>
-          {title}
-        </h2>
-
-        {/* Input - FloatingInput style */}
-        <div className="relative mb-6">
-          {/* Left Icon */}
-          <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 z-10">
-            <Image
-              src={icon}
-              alt=""
-              width={20}
-              height={20}
-              className="opacity-40"
-            />
-          </div>
-
-          {/* Input Field */}
-          <input
-            ref={inputRef}
-            type="text"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
-            placeholder={placeholder}
-            className="w-full rounded-lg bg-white py-4 pl-12 pr-4 text-base text-foreground transition-all placeholder:text-transparent focus:outline-none"
-            style={{
-              border: hasValue ? '3px solid #FF7043' : '2px solid #e5e7eb',
-            }}
-          />
-
-          {/* Floating Label */}
-          <label
-            className={`absolute px-2 transition-all duration-200 pointer-events-none z-10 left-10 ${
-              isFloating
-                ? '-top-3 text-sm font-medium bg-white'
-                : 'top-1/2 -translate-y-1/2 text-base'
-            } ${
-              isFloating
-                ? 'text-brand-primary'
-                : 'text-gray-400'
-            }`}
-          >
-            {placeholder}
-          </label>
-        </div>
-
-        {/* Save Button */}
-        <button
-          onClick={handleSave}
-          disabled={!hasChanges}
-          className={`w-full rounded-full py-4 font-medium transition-all mb-3 ${
-            hasChanges
-              ? 'bg-amber-100 text-foreground hover:bg-amber-200 active:scale-[0.98]'
-              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-          }`}
-        >
-          Save
-        </button>
-
-        {/* Cancel Button */}
-        <button
-          onClick={handleClose}
-          className="w-full rounded-full py-4 font-medium transition-all border hover:bg-gray-50 active:scale-[0.98]"
-          style={{ borderColor: '#c8c8c8', color: '#FF7043' }}
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  )
-}
-
-interface SocialItemProps {
-  icon: string
-  label: string
-  value?: string
-  onEdit: () => void
-}
-
-function SocialItem({ icon, label, value, onEdit }: SocialItemProps) {
-  return (
-    <div
-      className="flex items-center justify-between py-4 border-b"
-      style={{ borderColor: '#c8c8c8' }}
-    >
-      <div className="flex items-center gap-4">
-        <Image
-          src={icon}
-          alt=""
-          width={24}
-          height={24}
-        />
-        <span className="text-base" style={{ color: '#363636' }}>{value || label}</span>
-      </div>
-      <button
-        onClick={onEdit}
-        className="p-2 rounded-full hover:bg-muted transition-colors"
-      >
-        <Image
-          src="/assets/icons/Edit-2.svg"
-          alt="Edit"
-          width={20}
-          height={20}
-        />
-      </button>
-    </div>
-  )
-}
+type SocialLinkKey = 'website' | 'instagram' | 'youtube' | 'tiktok'
 
 export default function PersonalInfoPage() {
   const router = useRouter()
   const containerRef = useRef<HTMLDivElement>(null)
-  const [isEditMode, setIsEditMode] = useState(false)
-  const [bio, setBio] = useState(initialUserData.bio)
-  const [isAboutModalOpen, setIsAboutModalOpen] = useState(false)
+  const { profile, socialLinks, loading, updateProfile, updateSocialLinks, uploadAvatar } = useProfile()
 
-  // Social links state
-  const [socialLinks, setSocialLinks] = useState({
-    website: '',
-    instagram: '',
-    youtube: '',
-    tiktok: '',
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [isAboutModalOpen, setIsAboutModalOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  // Form state for edit mode
+  const [formData, setFormData] = useState({
+    full_name: '',
+    email: '',
+    phone: '',
+    location: '',
   })
 
   // Social edit modal state
   const [socialModal, setSocialModal] = useState<{
     isOpen: boolean
-    type: keyof typeof socialLinks | null
+    type: SocialLinkKey | null
     title: string
     icon: string
     placeholder: string
@@ -441,16 +50,20 @@ export default function PersonalInfoPage() {
     placeholder: '',
   })
 
-  // Form state for edit mode
-  const [formData, setFormData] = useState({
-    name: initialUserData.name,
-    email: initialUserData.email,
-    phone: initialUserData.phone,
-    location: initialUserData.location,
-  })
+  // Initialize form data when profile loads
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        full_name: profile.full_name || '',
+        email: profile.email || '',
+        phone: profile.phone || '',
+        location: profile.location || '',
+      })
+    }
+  }, [profile])
 
   useEffect(() => {
-    if (!containerRef.current) return
+    if (!containerRef.current || loading) return
 
     const sections = containerRef.current.querySelectorAll('[data-animate]')
 
@@ -465,18 +78,20 @@ export default function PersonalInfoPage() {
         ease: 'power2.out',
       }
     )
-  }, [])
+  }, [loading])
 
   const handleBack = () => {
     if (isEditMode) {
       setIsEditMode(false)
       // Reset form data
-      setFormData({
-        name: initialUserData.name,
-        email: initialUserData.email,
-        phone: initialUserData.phone,
-        location: initialUserData.location,
-      })
+      if (profile) {
+        setFormData({
+          full_name: profile.full_name || '',
+          email: profile.email || '',
+          phone: profile.phone || '',
+          location: profile.location || '',
+        })
+      }
     } else {
       router.back()
     }
@@ -486,14 +101,39 @@ export default function PersonalInfoPage() {
     setIsEditMode(true)
   }
 
-  const handleSave = () => {
-    // TODO: Save to database
-    setIsEditMode(false)
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      await updateProfile({
+        full_name: formData.full_name,
+        phone: formData.phone,
+        location: formData.location,
+      })
+      setIsEditMode(false)
+    } catch (error) {
+      console.error('Failed to save profile:', error)
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const handleSaveBio = (value: string) => {
-    setBio(value)
-    // TODO: Save to database
+  const handleSaveBio = async (value: string) => {
+    try {
+      await updateProfile({ bio: value })
+    } catch (error) {
+      console.error('Failed to save bio:', error)
+    }
+  }
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    try {
+      await uploadAvatar(file)
+    } catch (error) {
+      console.error('Failed to upload avatar:', error)
+    }
   }
 
   const updateFormData = (field: keyof typeof formData) => (value: string) => {
@@ -501,14 +141,14 @@ export default function PersonalInfoPage() {
   }
 
   // Check if form has changes
-  const hasChanges =
-    formData.name !== initialUserData.name ||
-    formData.email !== initialUserData.email ||
-    formData.phone !== initialUserData.phone ||
-    formData.location !== initialUserData.location
+  const hasChanges = profile && (
+    formData.full_name !== (profile.full_name || '') ||
+    formData.phone !== (profile.phone || '') ||
+    formData.location !== (profile.location || '')
+  )
 
   // Social modal helpers
-  const openSocialModal = (type: keyof typeof socialLinks, title: string, icon: string, placeholder: string) => {
+  const openSocialModal = (type: SocialLinkKey, title: string, icon: string, placeholder: string) => {
     setSocialModal({
       isOpen: true,
       type,
@@ -522,11 +162,21 @@ export default function PersonalInfoPage() {
     setSocialModal(prev => ({ ...prev, isOpen: false }))
   }
 
-  const handleSaveSocialLink = (value: string) => {
+  const handleSaveSocialLink = async (value: string) => {
     if (socialModal.type) {
-      setSocialLinks(prev => ({ ...prev, [socialModal.type!]: value }))
+      try {
+        await updateSocialLinks({ [socialModal.type]: value })
+      } catch (error) {
+        console.error('Failed to save social link:', error)
+      }
     }
   }
+
+  if (loading) {
+    return <PersonalInfoSkeleton />
+  }
+
+  const avatarUrl = profile?.avatar_url || '/assets/illustrations/avatar-placeholder.svg'
 
   return (
     <div className="relative min-h-screen bg-background">
@@ -547,15 +197,15 @@ export default function PersonalInfoPage() {
           {isEditMode ? (
             <button
               onClick={handleSave}
-              disabled={!hasChanges}
+              disabled={!hasChanges || saving}
               className="px-4 py-2 rounded-full text-base font-medium transition-all"
               style={{
-                backgroundColor: hasChanges ? '#FFEEE8' : '#FFF9F6',
-                color: hasChanges ? '#FF7043' : '#FFCCBC',
-                cursor: hasChanges ? 'pointer' : 'not-allowed',
+                backgroundColor: hasChanges && !saving ? '#FFEEE8' : '#FFF9F6',
+                color: hasChanges && !saving ? '#FF7043' : '#FFCCBC',
+                cursor: hasChanges && !saving ? 'pointer' : 'not-allowed',
               }}
             >
-              Save
+              {saving ? 'Saving...' : 'Save'}
             </button>
           ) : (
             <button
@@ -563,7 +213,7 @@ export default function PersonalInfoPage() {
               className="flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-muted"
             >
               <Image
-                src="/assets/icons/Edit.svg"
+                src="/assets/icons/Edit-2.svg"
                 alt="Edit"
                 width={24}
                 height={24}
@@ -583,16 +233,13 @@ export default function PersonalInfoPage() {
             <div className="relative">
               <div className="h-32 w-32 overflow-hidden rounded-2xl bg-gray-200">
                 <Image
-                  src={initialUserData.avatarUrl}
+                  src={avatarUrl}
                   alt="Profile"
                   fill
                   className="object-cover"
                 />
               </div>
-              <button
-                className="absolute -bottom-3 left-1/2 -translate-x-1/2 flex items-center justify-center gap-1.5 rounded-full bg-white px-4 py-2 shadow-md transition-all hover:shadow-lg active:scale-95"
-                onClick={handleEdit}
-              >
+              <label className="absolute -bottom-3 left-1/2 -translate-x-1/2 flex items-center justify-center gap-1.5 rounded-full bg-white px-4 py-2 shadow-md transition-all hover:shadow-lg active:scale-95 cursor-pointer">
                 <Image
                   src="/assets/icons/Camera.svg"
                   alt=""
@@ -601,7 +248,13 @@ export default function PersonalInfoPage() {
                   style={{ filter: 'invert(52%) sepia(67%) saturate(1042%) hue-rotate(346deg) brightness(101%) contrast(97%)' }}
                 />
                 <span className="text-sm font-medium" style={{ color: '#FF7043' }}>Edit</span>
-              </button>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  className="hidden"
+                />
+              </label>
             </div>
           </div>
         )}
@@ -625,8 +278,8 @@ export default function PersonalInfoPage() {
                 <EditableInfoItem
                   icon="/assets/icons/Profile.svg"
                   label="Full Name"
-                  value={formData.name}
-                  onChange={updateFormData('name')}
+                  value={formData.full_name}
+                  onChange={updateFormData('full_name')}
                 />
                 <EditableInfoItem
                   icon="/assets/icons/Mail.svg"
@@ -651,10 +304,10 @@ export default function PersonalInfoPage() {
               </>
             ) : (
               <>
-                <InfoItem icon="/assets/icons/Profile.svg" value={formData.name} />
-                <InfoItem icon="/assets/icons/Mail.svg" value={formData.email} />
-                <InfoItem icon="/assets/icons/Phone.svg" value={formData.phone} />
-                <InfoItem icon="/assets/icons/Global.svg" value={formData.location} />
+                <InfoItem icon="/assets/icons/Profile.svg" value={profile?.full_name || 'Not set'} />
+                <InfoItem icon="/assets/icons/Mail.svg" value={profile?.email || 'Not set'} />
+                <InfoItem icon="/assets/icons/Phone.svg" value={profile?.phone || 'Not set'} />
+                <InfoItem icon="/assets/icons/Global.svg" value={profile?.location || 'Not set'} />
               </>
             )}
           </div>
@@ -687,10 +340,10 @@ export default function PersonalInfoPage() {
                 className="w-full rounded-xl border pl-12 pr-4 pt-4 pb-8 text-sm min-h-[140px]"
                 style={{ borderColor: '#c8c8c8' }}
               >
-                {bio || <span style={{ color: '#9ca3af' }}>Write something punchy.</span>}
+                {profile?.bio || <span style={{ color: '#9ca3af' }}>Write something punchy.</span>}
               </div>
               <span className="absolute right-4 bottom-3 text-sm" style={{ color: '#656565' }}>
-                {bio.length}/225
+                {(profile?.bio || '').length}/225
               </span>
             </div>
           </button>
@@ -699,7 +352,7 @@ export default function PersonalInfoPage() {
         {/* Web & Social Section */}
         <section data-animate className="mb-8">
           <h2 className="mb-2 text-xl font-semibold" style={{ color: '#282828' }}>
-            Web & Social
+            Web & Social{' '}
             <span className="text-base font-normal" style={{ color: '#656565' }}>(Optional)</span>
           </h2>
           <p className="mb-6 text-sm" style={{ color: '#656565' }}>
@@ -710,25 +363,25 @@ export default function PersonalInfoPage() {
             <SocialItem
               icon="/assets/icons/Link.svg"
               label="Website"
-              value={socialLinks.website}
+              value={socialLinks?.website || undefined}
               onEdit={() => openSocialModal('website', 'Website', '/assets/icons/Link.svg', 'URL')}
             />
             <SocialItem
               icon="/assets/icons/Instagram.svg"
               label="Instagram"
-              value={socialLinks.instagram}
+              value={socialLinks?.instagram || undefined}
               onEdit={() => openSocialModal('instagram', 'Instagram', '/assets/icons/Instagram.svg', 'Username')}
             />
             <SocialItem
               icon="/assets/icons/Youtube.svg"
               label="Youtube"
-              value={socialLinks.youtube}
+              value={socialLinks?.youtube || undefined}
               onEdit={() => openSocialModal('youtube', 'Youtube', '/assets/icons/Youtube.svg', 'Channel URL')}
             />
             <SocialItem
               icon="/assets/icons/TikTok.svg"
               label="TikTok"
-              value={socialLinks.tiktok}
+              value={socialLinks?.tiktok || undefined}
               onEdit={() => openSocialModal('tiktok', 'TikTok', '/assets/icons/TikTok.svg', 'Username')}
             />
           </div>
@@ -756,7 +409,7 @@ export default function PersonalInfoPage() {
       <AboutYouModal
         isOpen={isAboutModalOpen}
         onClose={() => setIsAboutModalOpen(false)}
-        initialValue={bio}
+        initialValue={profile?.bio || ''}
         onSave={handleSaveBio}
       />
 
@@ -767,7 +420,7 @@ export default function PersonalInfoPage() {
         title={socialModal.title}
         icon={socialModal.icon}
         placeholder={socialModal.placeholder}
-        initialValue={socialModal.type ? socialLinks[socialModal.type] : ''}
+        initialValue={socialModal.type && socialLinks ? (socialLinks[socialModal.type] || '') : ''}
         onSave={handleSaveSocialLink}
       />
     </div>

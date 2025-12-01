@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { FadeIn } from '@/components/animations/FadeIn'
 import { FloatingInput } from '@/components/ui/FloatingInput'
@@ -17,7 +17,12 @@ export default function LoginPage() {
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [touched, setTouched] = useState({ email: false, password: false })
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
+  
+  // Get redirect URL from query params (for protected routes like /chat)
+  // Requirements: 6.3 - Redirect unauthenticated users to login
+  const redirectUrl = searchParams.get('redirect') || '/home'
 
   const updateEmail = (value: string) => {
     setError(null)
@@ -68,7 +73,8 @@ export default function LoginPage() {
       setError(error.message)
       setLoading(false)
     } else {
-      router.push('/home')
+      // Redirect to the original page or home
+      router.push(redirectUrl)
     }
   }
 
@@ -81,7 +87,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/home`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectUrl)}`,
       },
     })
     if (error) setError(error.message)
@@ -98,7 +104,7 @@ export default function LoginPage() {
         />
       </div>
 
-      <div className="relative z-10 mx-auto w-full max-w-md px-6 py-8">
+      <div className="relative z-10 w-full px-6 py-8">
       <FadeIn direction="up">
         <div className="mb-8">
           <h1 className="mb-2 text-3xl font-bold">Welcome Back Pal!</h1>

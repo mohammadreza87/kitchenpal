@@ -1,184 +1,207 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { vi, describe, it, expect, beforeEach } from 'vitest'
 import FeedbackPage from '@/app/(main)/feedback/page'
-import { routerMock } from './mocks'
+
+const mockUseFeedback = vi.fn()
+const mockUseProfile = vi.fn()
+const mockRouterPush = vi.fn()
+const mockRouterBack = vi.fn()
+
+vi.mock('@/hooks/useFeedback', () => ({
+  useFeedback: () => mockUseFeedback(),
+}))
+
+vi.mock('@/hooks/useProfile', () => ({
+  useProfile: () => mockUseProfile(),
+}))
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: mockRouterPush,
+    back: mockRouterBack,
+  }),
+}))
 
 describe('FeedbackPage', () => {
-  it('renders feedback form with title and description', () => {
-    render(<FeedbackPage />)
+  const defaultFeedbackMock = {
+    loading: false,
+    submitting: false,
+    submitted: false,
+    error: null,
+    submitFeedback: vi.fn().mockResolvedValue(true),
+    isAuthenticated: false,
+    userEmail: null,
+  }
 
-    expect(screen.getByText('Give Us Feedback')).toBeInTheDocument()
-    expect(screen.getByText(/We'd love to hear your thoughts/i)).toBeInTheDocument()
+  const defaultProfileMock = {
+    profile: { email: 'test@example.com', full_name: 'Test User' },
+    loading: false,
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockUseFeedback.mockReturnValue(defaultFeedbackMock)
+    mockUseProfile.mockReturnValue(defaultProfileMock)
   })
 
-  it('renders rating section with all emoji options', () => {
-    render(<FeedbackPage />)
+  describe('Page Structure', () => {
+    it('renders feedback page title', () => {
+      render(<FeedbackPage />)
+      expect(screen.getByText('Give Us Feedback')).toBeInTheDocument()
+    })
 
-    expect(screen.getByText(/How's your experience with Kitchen Pal/i)).toBeInTheDocument()
-    expect(screen.getByText('😞')).toBeInTheDocument()
-    expect(screen.getByText('😕')).toBeInTheDocument()
-    expect(screen.getByText('😐')).toBeInTheDocument()
-    expect(screen.getByText('🙂')).toBeInTheDocument()
-    expect(screen.getByText('😍')).toBeInTheDocument()
+    it('renders description text', () => {
+      render(<FeedbackPage />)
+      expect(screen.getByText(/we'd love to hear your thoughts/i)).toBeInTheDocument()
+    })
+
+    it('renders back button', () => {
+      render(<FeedbackPage />)
+      expect(screen.getByRole('img', { name: /back/i })).toBeInTheDocument()
+    })
+
+    it('renders rating section', () => {
+      render(<FeedbackPage />)
+      expect(screen.getByText(/how's your experience/i)).toBeInTheDocument()
+    })
+
+    it('renders all rating emojis', () => {
+      render(<FeedbackPage />)
+      expect(screen.getByText('😞')).toBeInTheDocument()
+      expect(screen.getByText('😕')).toBeInTheDocument()
+      expect(screen.getByText('😐')).toBeInTheDocument()
+      expect(screen.getByText('🙂')).toBeInTheDocument()
+      expect(screen.getByText('😍')).toBeInTheDocument()
+    })
+
+    it('renders feedback categories', () => {
+      render(<FeedbackPage />)
+      expect(screen.getByText('🐛 Bug Report')).toBeInTheDocument()
+      expect(screen.getByText('✨ Feature Request')).toBeInTheDocument()
+      expect(screen.getByText('💡 Improvement')).toBeInTheDocument()
+      expect(screen.getByText('💬 Other')).toBeInTheDocument()
+    })
+
+    it('renders feedback topics', () => {
+      render(<FeedbackPage />)
+      expect(screen.getByText('🍳 Recipes')).toBeInTheDocument()
+      expect(screen.getByText('🔍 Search')).toBeInTheDocument()
+      expect(screen.getByText('🎨 Design/UI')).toBeInTheDocument()
+    })
   })
 
-  it('shows rating label when emoji is selected', async () => {
-    render(<FeedbackPage />)
-
-    const loveItEmoji = screen.getByText('😍')
-    await userEvent.click(loveItEmoji)
-
-    expect(screen.getByText('Love it!')).toBeInTheDocument()
+  describe('Loading States', () => {
+    it('shows loading skeleton when profile is loading', () => {
+      mockUseProfile.mockReturnValue({ profile: null, loading: true })
+      render(<FeedbackPage />)
+      expect(document.querySelector('.animate-pulse')).toBeInTheDocument()
+      expect(screen.queryByText('Give Us Feedback')).not.toBeInTheDocument()
+    })
   })
 
-  it('renders category section with all options', () => {
-    render(<FeedbackPage />)
+  describe('Form Interactions', () => {
+    it('allows selecting a rating', async () => {
+      render(<FeedbackPage />)
+      const loveItButton = screen.getByText('😍').closest('button')!
+      await userEvent.click(loveItButton)
+      expect(screen.getByText('Love it!')).toBeInTheDocument()
+    })
 
-    expect(screen.getByText(/What's your feedback about/i)).toBeInTheDocument()
-    expect(screen.getByText('🐛 Bug Report')).toBeInTheDocument()
-    expect(screen.getByText('✨ Feature Request')).toBeInTheDocument()
-    expect(screen.getByText('💡 Improvement')).toBeInTheDocument()
-    expect(screen.getByText('💬 Other')).toBeInTheDocument()
+    it('allows selecting a category', async () => {
+      render(<FeedbackPage />)
+      const bugButton = screen.getByText('🐛 Bug Report').closest('button')!
+      await userEvent.click(bugButton)
+      expect(bugButton).toHaveClass('border-brand-primary')
+    })
+
+    it('allows deselecting a category', async () => {
+      render(<FeedbackPage />)
+      const bugButton = screen.getByText('🐛 Bug Report').closest('button')!
+      await userEvent.click(bugButton)
+      await userEvent.click(bugButton)
+      expect(bugButton).not.toHaveClass('border-brand-primary')
+    })
+
+    it('allows typing feedback', async () => {
+      render(<FeedbackPage />)
+      const textarea = screen.getByPlaceholderText('Your feedback')
+      await userEvent.type(textarea, 'This is my feedback')
+      expect(textarea).toHaveValue('This is my feedback')
+    })
+
+    it('shows character count', async () => {
+      render(<FeedbackPage />)
+      const textarea = screen.getByPlaceholderText('Your feedback')
+      await userEvent.type(textarea, 'Test')
+      expect(screen.getByText('4/500')).toBeInTheDocument()
+    })
   })
 
-  it('allows selecting a category', async () => {
-    render(<FeedbackPage />)
+  describe('Form Validation', () => {
+    it('submit button is disabled when feedback is too short', () => {
+      render(<FeedbackPage />)
+      const submitButton = screen.getByRole('button', { name: /submit feedback/i })
+      expect(submitButton).toBeDisabled()
+    })
 
-    const bugReportChip = screen.getByText('🐛 Bug Report')
-    const chipButton = bugReportChip.closest('button')
-
-    // Initially not selected (bg-white)
-    expect(chipButton).toHaveClass('bg-white')
-
-    await userEvent.click(bugReportChip)
-
-    // After click, should be selected (bg-amber-50)
-    expect(chipButton).toHaveClass('bg-amber-50')
+    it('submit button is enabled when feedback is long enough', async () => {
+      render(<FeedbackPage />)
+      const textarea = screen.getByPlaceholderText('Your feedback')
+      await userEvent.type(textarea, 'This is a long enough feedback message')
+      const submitButton = screen.getByRole('button', { name: /submit feedback/i })
+      expect(submitButton).not.toBeDisabled()
+    })
   })
 
-  it('allows deselecting a category', async () => {
-    render(<FeedbackPage />)
+  describe('Form Submission', () => {
+    it('calls submitFeedback on valid submission', async () => {
+      const submitFeedback = vi.fn().mockResolvedValue(true)
+      mockUseFeedback.mockReturnValue({ ...defaultFeedbackMock, submitFeedback })
 
-    const bugReportChip = screen.getByText('🐛 Bug Report')
-    const chipButton = bugReportChip.closest('button')
+      render(<FeedbackPage />)
+      const textarea = screen.getByPlaceholderText('Your feedback')
+      await userEvent.type(textarea, 'This is my detailed feedback message')
+      await userEvent.click(screen.getByRole('button', { name: /submit feedback/i }))
 
-    // Select
-    await userEvent.click(bugReportChip)
-    expect(chipButton).toHaveClass('bg-amber-50')
+      expect(submitFeedback).toHaveBeenCalled()
+    })
 
-    // Deselect
-    await userEvent.click(bugReportChip)
-    expect(chipButton).toHaveClass('bg-white')
+    it('shows submitting state', async () => {
+      mockUseFeedback.mockReturnValue({ ...defaultFeedbackMock, submitting: true })
+      render(<FeedbackPage />)
+      expect(screen.getByText('Submitting...')).toBeInTheDocument()
+    })
   })
 
-  it('renders feedback textarea with character counter', () => {
-    render(<FeedbackPage />)
-
-    expect(screen.getByText('Tell us more')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('Your feedback')).toBeInTheDocument()
-    expect(screen.getByText('0/500')).toBeInTheDocument()
+  describe('Navigation', () => {
+    it('calls router.back when back button is clicked', async () => {
+      render(<FeedbackPage />)
+      const backImg = screen.getByRole('img', { name: /back/i })
+      await userEvent.click(backImg.closest('button')!)
+      expect(mockRouterBack).toHaveBeenCalled()
+    })
   })
 
-  it('updates character counter as user types', async () => {
-    render(<FeedbackPage />)
+  describe('Authenticated User', () => {
+    it('shows user name when authenticated', () => {
+      mockUseFeedback.mockReturnValue({ ...defaultFeedbackMock, isAuthenticated: true })
+      mockUseProfile.mockReturnValue({
+        profile: { email: 'test@example.com', full_name: 'John Doe' },
+        loading: false,
+      })
+      render(<FeedbackPage />)
+      expect(screen.getByText(/submitting as john doe/i)).toBeInTheDocument()
+    })
 
-    const textarea = screen.getByPlaceholderText('Your feedback')
-    await userEvent.type(textarea, 'Great app!')
-
-    expect(screen.getByText('10/500')).toBeInTheDocument()
-  })
-
-  it('renders optional email field', () => {
-    render(<FeedbackPage />)
-
-    expect(screen.getByText('Email')).toBeInTheDocument()
-    expect(screen.getByText('(Optional)')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('Email address')).toBeInTheDocument()
-  })
-
-  it('submit button is disabled when feedback is empty', () => {
-    render(<FeedbackPage />)
-
-    const submitButton = screen.getByRole('button', { name: /submit feedback/i })
-    expect(submitButton).toBeDisabled()
-  })
-
-  it('submit button is enabled when feedback has content', async () => {
-    render(<FeedbackPage />)
-
-    const textarea = screen.getByPlaceholderText('Your feedback')
-    await userEvent.type(textarea, 'This is my feedback')
-
-    const submitButton = screen.getByRole('button', { name: /submit feedback/i })
-    expect(submitButton).not.toBeDisabled()
-  })
-
-  it('shows submitting state during form submission', async () => {
-    render(<FeedbackPage />)
-
-    const textarea = screen.getByPlaceholderText('Your feedback')
-    await userEvent.type(textarea, 'Great feedback content')
-
-    const submitButton = screen.getByRole('button', { name: /submit feedback/i })
-    await userEvent.click(submitButton)
-
-    expect(screen.getByText('Submitting...')).toBeInTheDocument()
-  })
-
-  it('shows success screen after successful submission', async () => {
-    render(<FeedbackPage />)
-
-    const textarea = screen.getByPlaceholderText('Your feedback')
-    await userEvent.type(textarea, 'Great feedback content')
-
-    const submitButton = screen.getByRole('button', { name: /submit feedback/i })
-    await userEvent.click(submitButton)
-
-    await waitFor(() => {
-      expect(screen.getByText('Thank You!')).toBeInTheDocument()
-    }, { timeout: 3000 })
-
-    expect(screen.getByText(/Your feedback has been submitted successfully/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /back to profile/i })).toBeInTheDocument()
-  })
-
-  it('navigates to profile page from success screen', async () => {
-    render(<FeedbackPage />)
-
-    const textarea = screen.getByPlaceholderText('Your feedback')
-    await userEvent.type(textarea, 'Great feedback content')
-
-    const submitButton = screen.getByRole('button', { name: /submit feedback/i })
-    await userEvent.click(submitButton)
-
-    await waitFor(() => {
-      expect(screen.getByText('Thank You!')).toBeInTheDocument()
-    }, { timeout: 3000 })
-
-    const backToProfileButton = screen.getByRole('button', { name: /back to profile/i })
-    await userEvent.click(backToProfileButton)
-
-    expect(routerMock.push).toHaveBeenCalledWith('/profile')
-  })
-
-  it('calls router.back when back button is clicked', async () => {
-    render(<FeedbackPage />)
-
-    const backButtons = screen.getAllByAltText('Back')
-    await userEvent.click(backButtons[0].closest('button')!)
-
-    expect(routerMock.back).toHaveBeenCalled()
-  })
-
-  it('enforces max character limit on feedback textarea', async () => {
-    render(<FeedbackPage />)
-
-    const textarea = screen.getByPlaceholderText('Your feedback')
-    const longText = 'a'.repeat(600)
-
-    await userEvent.type(textarea, longText)
-
-    // Should be truncated to 500
-    expect(screen.getByText('500/500')).toBeInTheDocument()
+    it('pre-fills email from profile', () => {
+      mockUseProfile.mockReturnValue({
+        profile: { email: 'prefilled@example.com' },
+        loading: false,
+      })
+      render(<FeedbackPage />)
+      const emailInput = screen.getByPlaceholderText('Email address')
+      expect(emailInput).toHaveValue('prefilled@example.com')
+    })
   })
 })

@@ -12,6 +12,7 @@ beforeAll(() => {
 vi.mock('next/navigation', () => ({
   useRouter: () => routerMock,
   usePathname: () => pathnameMock.value,
+  useSearchParams: () => new URLSearchParams(),
 }))
 
 vi.mock('next/link', () => ({

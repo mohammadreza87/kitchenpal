@@ -55,9 +55,15 @@ export async function updateSession(request: NextRequest) {
   )
 
   // Redirect to login if not authenticated and not on a public route
+  // Requirements: 6.3 - Redirect unauthenticated users to login
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone()
+    const redirectPath = request.nextUrl.pathname
     url.pathname = '/login'
+    // Preserve the original path for redirect after login
+    if (redirectPath && redirectPath !== '/') {
+      url.searchParams.set('redirect', redirectPath)
+    }
     return NextResponse.redirect(url)
   }
 

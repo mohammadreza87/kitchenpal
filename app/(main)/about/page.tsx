@@ -63,7 +63,7 @@ export default function AboutPage() {
 
   return (
     <div className="relative min-h-screen bg-background">
-      <div ref={containerRef} className="relative z-10 mx-auto w-full max-w-md px-6 py-8">
+      <div ref={containerRef} className="relative z-10 w-full px-6 py-8">
         {/* Header */}
         <div data-animate className="mb-8 flex items-center">
           <button

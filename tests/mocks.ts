@@ -28,6 +28,8 @@ export const supabaseAuthMock = {
   updateUser: vi.fn().mockResolvedValue({ data: {}, error: null }),
   signInWithOAuth: vi.fn().mockResolvedValue({ data: {}, error: null }),
   signOut: vi.fn().mockResolvedValue({ error: null }),
+  getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'test-user-id', email: 'test@example.com' } }, error: null }),
+  onAuthStateChange: vi.fn().mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),
 }
 
 export const resetSupabaseAuthMock = () => {
@@ -43,6 +45,10 @@ export const resetSupabaseAuthMock = () => {
   supabaseAuthMock.signInWithOAuth.mockResolvedValue({ data: {}, error: null })
   supabaseAuthMock.signOut.mockClear()
   supabaseAuthMock.signOut.mockResolvedValue({ error: null })
+  supabaseAuthMock.getUser.mockClear()
+  supabaseAuthMock.getUser.mockResolvedValue({ data: { user: { id: 'test-user-id', email: 'test@example.com' } }, error: null })
+  supabaseAuthMock.onAuthStateChange.mockClear()
+  supabaseAuthMock.onAuthStateChange.mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } })
 }
 
 export const resetRouterMock = () => {

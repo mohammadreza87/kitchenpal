@@ -1,66 +1,148 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { vi, describe, it, expect, beforeEach } from 'vitest'
 import DietaryPreferencesPage from '@/app/(onboarding)/preferences/page'
 
+// Mock useOnboardingPreferences hook
+const mockUseOnboardingPreferences = vi.fn()
+
+vi.mock('@/hooks/useOnboardingPreferences', () => ({
+  useOnboardingPreferences: () => mockUseOnboardingPreferences(),
+}))
+
 describe('DietaryPreferencesPage', () => {
-  it('renders the page title and description', () => {
-    render(<DietaryPreferencesPage />)
+  const defaultMockReturn = {
+    dietary: [],
+    cuisine: [],
+    allergies: [],
+    cookingSkill: 'Beginner',
+    setDietary: vi.fn(),
+    setCuisine: vi.fn(),
+    setAllergies: vi.fn(),
+    setCookingSkill: vi.fn(),
+    toggleDietary: vi.fn(),
+    toggleCuisine: vi.fn(),
+    toggleAllergy: vi.fn(),
+    saveToDatabase: vi.fn(),
+    loadFromDatabase: vi.fn(),
+    clearPreferences: vi.fn(),
+  }
 
-    expect(screen.getByText('Dietary Preferences')).toBeInTheDocument()
-    expect(
-      screen.getByText(/help us customize your recipes/i)
-    ).toBeInTheDocument()
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockUseOnboardingPreferences.mockReturnValue(defaultMockReturn)
   })
 
-  it('renders all dietary options', () => {
-    render(<DietaryPreferencesPage />)
+  describe('Page Structure', () => {
+    it('renders the page title', () => {
+      render(<DietaryPreferencesPage />)
+      expect(screen.getByRole('heading', { name: 'Dietary Preferences' })).toBeInTheDocument()
+    })
 
-    expect(screen.getByText('Dairy-Free')).toBeInTheDocument()
-    expect(screen.getByText('Keto')).toBeInTheDocument()
-    expect(screen.getByText('Low-Fat')).toBeInTheDocument()
-    expect(screen.getByText('Low-Carb')).toBeInTheDocument()
-    expect(screen.getByText('Vegan')).toBeInTheDocument()
-    expect(screen.getByText('Vegetarian')).toBeInTheDocument()
-    expect(screen.getByText('Mediterranean')).toBeInTheDocument()
-    expect(screen.getByText('Gluten-Free')).toBeInTheDocument()
+    it('renders the description text', () => {
+      render(<DietaryPreferencesPage />)
+      expect(screen.getByText(/help us customize your recipes/i)).toBeInTheDocument()
+    })
+
+    it('renders exactly 8 dietary options', () => {
+      render(<DietaryPreferencesPage />)
+      const buttons = screen.getAllByRole('button')
+      expect(buttons).toHaveLength(8)
+    })
   })
 
-  it('allows selecting a dietary option', async () => {
-    render(<DietaryPreferencesPage />)
+  describe('Dietary Options Display', () => {
+    const expectedOptions = [
+      'Dairy-Free',
+      'Keto',
+      'Low-Fat',
+      'Low-Carb',
+      'Vegan',
+      'Vegetarian',
+      'Mediterranean',
+      'Gluten-Free',
+    ]
 
-    const ketoButton = screen.getByRole('button', { name: /keto/i })
-    expect(ketoButton).not.toHaveClass('bg-amber-50')
+    it.each(expectedOptions)('renders %s option', (option) => {
+      render(<DietaryPreferencesPage />)
+      expect(screen.getByText(option)).toBeInTheDocument()
+    })
 
-    await userEvent.click(ketoButton)
-
-    expect(ketoButton).toHaveClass('bg-amber-50')
+    it('renders options with icons', () => {
+      render(<DietaryPreferencesPage />)
+      const images = screen.getAllByRole('img')
+      expect(images.length).toBeGreaterThanOrEqual(8)
+    })
   })
 
-  it('allows deselecting a dietary option', async () => {
-    render(<DietaryPreferencesPage />)
+  describe('Selection Behavior', () => {
+    it('calls toggleDietary with correct ID when option is clicked', async () => {
+      const toggleDietary = vi.fn()
+      mockUseOnboardingPreferences.mockReturnValue({
+        ...defaultMockReturn,
+        toggleDietary,
+      })
 
-    const veganButton = screen.getByRole('button', { name: /vegan/i })
+      render(<DietaryPreferencesPage />)
+      await userEvent.click(screen.getByRole('button', { name: /keto/i }))
 
-    await userEvent.click(veganButton)
-    expect(veganButton).toHaveClass('bg-amber-50')
+      expect(toggleDietary).toHaveBeenCalledTimes(1)
+      expect(toggleDietary).toHaveBeenCalledWith('keto')
+    })
 
-    await userEvent.click(veganButton)
-    expect(veganButton).not.toHaveClass('bg-amber-50')
+    it('shows selected state with bg-amber-50 class', () => {
+      mockUseOnboardingPreferences.mockReturnValue({
+        ...defaultMockReturn,
+        dietary: ['keto', 'vegan'],
+      })
+
+      render(<DietaryPreferencesPage />)
+
+      expect(screen.getByRole('button', { name: /keto/i })).toHaveClass('bg-amber-50')
+      expect(screen.getByRole('button', { name: /vegan/i })).toHaveClass('bg-amber-50')
+    })
+
+    it('shows unselected state without bg-amber-50 class', () => {
+      mockUseOnboardingPreferences.mockReturnValue({
+        ...defaultMockReturn,
+        dietary: ['keto'],
+      })
+
+      render(<DietaryPreferencesPage />)
+
+      expect(screen.getByRole('button', { name: /low-carb/i })).not.toHaveClass('bg-amber-50')
+      expect(screen.getByRole('button', { name: /vegan/i })).not.toHaveClass('bg-amber-50')
+    })
+
+    it('allows selecting all options', () => {
+      const allOptions = ['dairy-free', 'keto', 'low-fat', 'low-carb', 'vegan', 'vegetarian', 'mediterranean', 'gluten-free']
+      mockUseOnboardingPreferences.mockReturnValue({
+        ...defaultMockReturn,
+        dietary: allOptions,
+      })
+
+      render(<DietaryPreferencesPage />)
+
+      const buttons = screen.getAllByRole('button')
+      buttons.forEach(button => {
+        expect(button).toHaveClass('bg-amber-50')
+      })
+    })
   })
 
-  it('allows selecting multiple dietary options', async () => {
-    render(<DietaryPreferencesPage />)
+  describe('Accessibility', () => {
+    it('all options are keyboard accessible', () => {
+      render(<DietaryPreferencesPage />)
+      const buttons = screen.getAllByRole('button')
+      buttons.forEach(button => {
+        expect(button).not.toHaveAttribute('tabindex', '-1')
+      })
+    })
 
-    const ketoButton = screen.getByRole('button', { name: /keto/i })
-    const veganButton = screen.getByRole('button', { name: /vegan/i })
-    const lowCarbButton = screen.getByRole('button', { name: /low-carb/i })
-
-    await userEvent.click(ketoButton)
-    await userEvent.click(veganButton)
-    await userEvent.click(lowCarbButton)
-
-    expect(ketoButton).toHaveClass('bg-amber-50')
-    expect(veganButton).toHaveClass('bg-amber-50')
-    expect(lowCarbButton).toHaveClass('bg-amber-50')
+    it('options have accessible names', () => {
+      render(<DietaryPreferencesPage />)
+      expect(screen.getByRole('button', { name: /dairy-free/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /keto/i })).toBeInTheDocument()
+    })
   })
 })

@@ -1,42 +1,31 @@
 'use client'
 
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { gsap } from '@/lib/gsap'
-import { cn } from '@/lib/utils'
+import { usePreferences } from '@/hooks/usePreferences'
+import { PreferenceChip } from '@/components/profile'
+import { dietaryOptions, cuisineOptions } from '@/lib/constants/preferences'
 
-// Mock saved preferences - in real app, this would come from user's profile/database
-const savedPreferences = {
-  dietary: ['Dairy-Free', 'Mediterranean'],
-  cuisine: ['Italian', 'Chinese', 'Japanese', 'Spanish Tapas'],
-  allergies: ['Peanuts', 'Sesame', 'Dairy', 'Nuts'],
-  cookingSkill: 'Enthusiast',
-}
-
-interface PreferenceChipProps {
-  label: string
-}
-
-function PreferenceChip({ label }: PreferenceChipProps) {
+function PreferencesSkeleton() {
   return (
-    <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-amber-50 px-3 py-2">
-      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-foreground">
-        <svg
-          className="h-3 w-3 text-white"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={3}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M5 13l4 4L19 7"
-          />
-        </svg>
+    <div className="mx-auto w-full max-w-md px-6 py-8 animate-pulse">
+      <div className="mb-6 flex items-center justify-between">
+        <div className="h-10 w-10 rounded-full bg-gray-200" />
+        <div className="h-10 w-10 rounded-full bg-gray-200" />
       </div>
-      <span className="text-sm font-medium text-foreground">{label}</span>
+      <div className="mb-8 h-8 w-32 rounded bg-gray-200" />
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="mb-6 border-b pb-6 border-gray-100">
+          <div className="mb-4 h-4 w-32 rounded bg-gray-200" />
+          <div className="flex flex-wrap gap-2">
+            {[1, 2, 3].map((j) => (
+              <div key={j} className="h-10 w-24 rounded-full bg-gray-200" />
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -44,9 +33,10 @@ function PreferenceChip({ label }: PreferenceChipProps) {
 export default function PreferencesSummaryPage() {
   const router = useRouter()
   const containerRef = useRef<HTMLDivElement>(null)
+  const { preferences, loading } = usePreferences()
 
   useEffect(() => {
-    if (!containerRef.current) return
+    if (!containerRef.current || loading) return
 
     const sections = containerRef.current.querySelectorAll('[data-animate]')
 
@@ -61,15 +51,30 @@ export default function PreferencesSummaryPage() {
         ease: 'power2.out',
       }
     )
-  }, [])
+  }, [loading])
 
   const handleBack = () => {
     router.back()
   }
 
   const handleEdit = () => {
-    router.push('/preferences')
+    router.push('/profile/preferences/edit')
   }
+
+  if (loading) {
+    return <PreferencesSkeleton />
+  }
+
+  const dietary = preferences?.dietary || []
+  const cuisine = preferences?.cuisine || []
+  const allergies = preferences?.allergies || []
+  const cookingSkill = preferences?.cooking_skill || 'Beginner'
+
+  // Get display labels from constants
+  const getDietaryLabel = (id: string) =>
+    dietaryOptions.find(o => o.id === id)?.label || id
+  const getCuisineLabel = (id: string) =>
+    cuisineOptions.find(o => o.id === id)?.label || id
 
   return (
     <div className="relative min-h-screen bg-background">
@@ -101,7 +106,7 @@ export default function PreferencesSummaryPage() {
             className="flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-muted"
           >
             <Image
-              src="/assets/icons/Edit.svg"
+              src="/assets/icons/Edit-2.svg"
               alt="Edit"
               width={24}
               height={24}
@@ -118,9 +123,13 @@ export default function PreferencesSummaryPage() {
             Dietary Preferences
           </h2>
           <div className="flex flex-wrap gap-2">
-            {savedPreferences.dietary.map((pref) => (
-              <PreferenceChip key={pref} label={pref} />
-            ))}
+            {dietary.length > 0 ? (
+              dietary.map((pref) => (
+                <PreferenceChip key={pref} label={getDietaryLabel(pref)} />
+              ))
+            ) : (
+              <p className="text-sm text-gray-400">No dietary preferences set</p>
+            )}
           </div>
         </section>
 
@@ -130,9 +139,13 @@ export default function PreferencesSummaryPage() {
             Cuisine Preferences
           </h2>
           <div className="flex flex-wrap gap-2">
-            {savedPreferences.cuisine.map((pref) => (
-              <PreferenceChip key={pref} label={pref} />
-            ))}
+            {cuisine.length > 0 ? (
+              cuisine.map((pref) => (
+                <PreferenceChip key={pref} label={getCuisineLabel(pref)} />
+              ))
+            ) : (
+              <p className="text-sm text-gray-400">No cuisine preferences set</p>
+            )}
           </div>
         </section>
 
@@ -142,9 +155,13 @@ export default function PreferencesSummaryPage() {
             Allergy & Dietary Restrictions
           </h2>
           <div className="flex flex-wrap gap-2">
-            {savedPreferences.allergies.map((pref) => (
-              <PreferenceChip key={pref} label={pref} />
-            ))}
+            {allergies.length > 0 ? (
+              allergies.map((pref) => (
+                <PreferenceChip key={pref} label={pref} />
+              ))
+            ) : (
+              <p className="text-sm text-gray-400">No allergies set</p>
+            )}
           </div>
         </section>
 
@@ -154,7 +171,7 @@ export default function PreferencesSummaryPage() {
             Cooking Skills
           </h2>
           <div className="flex flex-wrap gap-2">
-            <PreferenceChip label={savedPreferences.cookingSkill} />
+            <PreferenceChip label={cookingSkill} />
           </div>
         </section>
       </div>

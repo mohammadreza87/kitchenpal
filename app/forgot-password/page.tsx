@@ -104,7 +104,7 @@ export default function ForgotPasswordPage() {
           />
         </div>
 
-        <div ref={successRef} className="relative z-10 mx-auto w-full max-w-md px-6 py-8" style={{ opacity: 0 }}>
+        <div ref={successRef} className="relative z-10 w-full px-6 py-8" style={{ opacity: 0 }}>
           <button
             onClick={() => router.back()}
             className="mb-8 flex h-10 w-10 items-center justify-center rounded-full hover:bg-muted"
@@ -163,7 +163,7 @@ export default function ForgotPasswordPage() {
         />
       </div>
 
-      <div ref={formRef} className="relative z-10 mx-auto w-full max-w-md px-6 py-8">
+      <div ref={formRef} className="relative z-10 w-full px-6 py-8">
         <button
           onClick={() => router.back()}
           className="mb-8 flex h-10 w-10 items-center justify-center rounded-full hover:bg-muted"

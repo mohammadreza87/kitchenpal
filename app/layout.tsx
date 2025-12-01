@@ -42,9 +42,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${poppins.variable} font-sans antialiased`}
+        className={`${poppins.variable} font-sans antialiased bg-gray-100`}
       >
-        {children}
+        <div className="mx-auto w-full max-w-3xl bg-background min-h-screen shadow-xl">
+          {children}
+        </div>
       </body>
     </html>
   );

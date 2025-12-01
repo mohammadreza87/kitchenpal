@@ -138,7 +138,7 @@ export default function OnboardingPage() {
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden bg-background">
-      <div ref={containerRef} className="relative z-10 mx-auto flex min-h-screen w-full max-w-md flex-col px-6 py-8">
+      <div ref={containerRef} className="relative z-10 flex min-h-screen w-full flex-col px-6 py-8">
         <div className="flex items-center justify-between">
           {currentSlide > 0 ? (
             <button

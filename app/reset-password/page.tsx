@@ -91,7 +91,7 @@ export default function ResetPasswordPage() {
         />
       </div>
 
-      <div className="relative z-10 mx-auto w-full max-w-md px-6 py-8">
+      <div className="relative z-10 w-full px-6 py-8">
       <FadeIn direction="up">
         <div className="mb-8">
           <h1 className="mb-2 text-3xl font-bold">Set New Password</h1>
