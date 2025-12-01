@@ -77,13 +77,13 @@ export function ReviewsTab({
               summaryAvatars.map((avatar, index) => (
                 <div
                   key={index}
-                  className="relative h-8 w-8 rounded-full border-2 border-white overflow-hidden"
+                  className="relative h-8 w-8 rounded-2xl border-2 border-white overflow-hidden"
                 >
                   <Image
                     src={avatar}
                     alt=""
                     fill
-                    className="object-cover"
+                    className="object-cover scale-110 rounded-2xl"
                   />
                 </div>
               ))
@@ -92,7 +92,7 @@ export function ReviewsTab({
               Array.from({ length: Math.min(4, Math.max(totalCount, 1)) }).map((_, index) => (
                 <div
                   key={index}
-                  className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-neutral-100"
+                  className="flex h-8 w-8 items-center justify-center rounded-2xl border-2 border-white bg-neutral-100"
                 >
                   <Image
                     src="/assets/icons/Profile.svg"
@@ -216,16 +216,16 @@ function ReviewItem({ review, isOwnReview, onEdit, onDelete }: ReviewItemProps) 
         {/* User Avatar */}
         <div className="flex-shrink-0">
           {review.userAvatar ? (
-            <div className="relative h-10 w-10 rounded-full overflow-hidden">
+            <div className="relative h-10 w-10 rounded-2xl overflow-hidden">
               <Image
                 src={review.userAvatar}
                 alt={review.userName}
                 fill
-                className="object-cover"
+                className="object-cover scale-110 rounded-2xl"
               />
             </div>
           ) : (
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-neutral-200">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-neutral-200">
               <Image
                 src="/assets/icons/Profile.svg"
                 alt=""

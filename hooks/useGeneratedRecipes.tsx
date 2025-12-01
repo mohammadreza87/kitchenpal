@@ -43,6 +43,8 @@ interface GeneratedRecipesContextType {
   getRecipesByCategory: (category: string) => GeneratedRecipeItem[]
   getNewRecipes: (limit?: number) => GeneratedRecipeItem[]
   clearAllRecipes: () => Promise<void>
+  regenerateImage: (id: string) => void
+  regeneratingIds: Set<string>
   loading: boolean
 }
 
@@ -51,6 +53,7 @@ const GeneratedRecipesContext = createContext<GeneratedRecipesContextType | null
 export function GeneratedRecipesProvider({ children }: { children: ReactNode }) {
   const [generatedRecipes, setGeneratedRecipes] = useState<GeneratedRecipeItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [regeneratingIds, setRegeneratingIds] = useState<Set<string>>(new Set())
   const { user } = useUser()
   const supabase = createClient()
 
@@ -259,6 +262,99 @@ export function GeneratedRecipesProvider({ children }: { children: ReactNode }) 
     }
   }, [user, supabase])
 
+  const regenerateImage = useCallback((id: string) => {
+    // Find the recipe
+    const recipe = generatedRecipes.find(r => r.id === id)
+    if (!recipe) {
+      console.error('Recipe not found for image regeneration')
+      return
+    }
+
+    // Check if already regenerating
+    if (regeneratingIds.has(id)) {
+      return
+    }
+
+    // Add to regenerating set
+    setRegeneratingIds(prev => new Set(prev).add(id))
+
+    // Fire and forget - runs in background
+    const doRegenerate = async () => {
+      try {
+        // Call the image generation API
+        const response = await fetch('/api/image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            recipeName: recipe.title,
+            description: recipe.description,
+          }),
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to regenerate image')
+        }
+
+        const data = await response.json()
+        const newImageUrl = data.imageUrl
+
+        if (!newImageUrl || newImageUrl.includes('placeholder')) {
+          throw new Error('Image generation returned placeholder')
+        }
+
+        // Update the recipe in the database (only if user owns it)
+        if (user && recipe.userId === user.id) {
+          // Update user_generated_recipes table
+          const { error } = await supabase
+            .from('user_generated_recipes')
+            .update({ image_url: newImageUrl })
+            .eq('id', id)
+            .eq('user_id', user.id)
+
+          if (error) {
+            console.error('Failed to update image URL in user_generated_recipes:', error)
+          }
+
+          // Also update the public recipes table
+          const { error: recipesError } = await supabase
+            .from('recipes')
+            .update({ image_url: newImageUrl })
+            .eq('id', id)
+
+          if (recipesError) {
+            console.error('Failed to update image URL in recipes table:', recipesError)
+          }
+        }
+
+        // Update local state
+        setGeneratedRecipes(prev =>
+          prev.map(r => (r.id === id ? { ...r, imageUrl: newImageUrl } : r))
+        )
+
+        // Dispatch custom event for toast notification
+        window.dispatchEvent(new CustomEvent('image-regenerated', {
+          detail: { id, title: recipe.title, success: true }
+        }))
+      } catch (e) {
+        console.error('Failed to regenerate image:', e)
+        // Dispatch error event
+        window.dispatchEvent(new CustomEvent('image-regenerated', {
+          detail: { id, title: recipe.title, success: false }
+        }))
+      } finally {
+        // Remove from regenerating set
+        setRegeneratingIds(prev => {
+          const next = new Set(prev)
+          next.delete(id)
+          return next
+        })
+      }
+    }
+
+    // Start background regeneration
+    doRegenerate()
+  }, [generatedRecipes, regeneratingIds, user, supabase])
+
   return (
     <GeneratedRecipesContext.Provider
       value={{
@@ -268,6 +364,8 @@ export function GeneratedRecipesProvider({ children }: { children: ReactNode }) 
         getRecipesByCategory,
         getNewRecipes,
         clearAllRecipes,
+        regenerateImage,
+        regeneratingIds,
         loading,
       }}
     >

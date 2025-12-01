@@ -33,7 +33,7 @@ export function ReviewsProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
 
-  // Fetch all reviews from Supabase
+  // Fetch all reviews from Supabase with current profile avatars
   const fetchReviews = useCallback(async () => {
     try {
       setLoading(true)
@@ -48,17 +48,39 @@ export function ReviewsProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      // Transform database format to app format
-      const transformedReviews: Review[] = (data || []).map((row) => ({
-        id: row.id,
-        recipeId: row.recipe_id,
-        userId: row.user_id,
-        userName: row.user_name || 'Anonymous',
-        userAvatar: row.user_avatar || '',
-        date: row.created_at,
-        rating: row.rating,
-        comment: row.comment || '',
-      }))
+      // Get unique user IDs to fetch their current profile avatars
+      const userIds = [...new Set((data || []).map(row => row.user_id).filter(Boolean))]
+
+      // Fetch current profile data for all reviewers
+      let profilesMap: Record<string, { avatar_url: string; full_name: string }> = {}
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, avatar_url, full_name')
+          .in('id', userIds)
+
+        if (profiles) {
+          profilesMap = profiles.reduce((acc, p) => {
+            acc[p.id] = { avatar_url: p.avatar_url || '', full_name: p.full_name || '' }
+            return acc
+          }, {} as Record<string, { avatar_url: string; full_name: string }>)
+        }
+      }
+
+      // Transform database format to app format, using current profile avatar
+      const transformedReviews: Review[] = (data || []).map((row) => {
+        const profile = row.user_id ? profilesMap[row.user_id] : null
+        return {
+          id: row.id,
+          recipeId: row.recipe_id,
+          userId: row.user_id,
+          userName: profile?.full_name || row.user_name || 'Anonymous',
+          userAvatar: profile?.avatar_url || row.user_avatar || '',
+          date: row.created_at,
+          rating: row.rating,
+          comment: row.comment || '',
+        }
+      })
 
       setReviews(transformedReviews)
     } catch (e) {
@@ -116,8 +138,16 @@ export function ReviewsProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const userName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Anonymous'
-      const userAvatar = user.user_metadata?.avatar_url || ''
+      // Fetch user profile to get the actual profile avatar (not Google OAuth avatar)
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('full_name, avatar_url')
+        .eq('id', user.id)
+        .single()
+
+      // Use profile data if available, fallback to user metadata
+      const userName = profileData?.full_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Anonymous'
+      const userAvatar = profileData?.avatar_url || ''
 
       const { data, error } = await supabase
         .from('generated_recipe_reviews')

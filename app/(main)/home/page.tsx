@@ -23,6 +23,7 @@ interface RecipeSectionProps {
   onCreateClick?: () => void
   isSaved: (id: string) => boolean
   onToggleSave: (id: string) => void
+  onRetryImage?: (id: string) => void
 }
 
 function RecipeSection({
@@ -34,6 +35,7 @@ function RecipeSection({
   onCreateClick,
   isSaved,
   onToggleSave,
+  onRetryImage,
 }: RecipeSectionProps) {
   if (recipes.length === 0) {
     return (
@@ -93,6 +95,7 @@ function RecipeSection({
               {...recipe}
               isSaved={isSaved(recipe.id)}
               onToggleSave={onToggleSave}
+              onRetryImage={onRetryImage}
             />
           ))}
         </div>
@@ -105,7 +108,7 @@ export default function HomePage() {
   const router = useRouter()
   const containerRef = useRef<HTMLDivElement>(null)
   const hasAnimated = useRef(false)
-  const { generatedRecipes, getNewRecipes, loading } = useGeneratedRecipes()
+  const { generatedRecipes, getNewRecipes, regenerateImage, loading } = useGeneratedRecipes()
   const { savedIds, isSaved, toggleFavorite } = useFavorites()
 
   useEffect(() => {
@@ -312,6 +315,7 @@ export default function HomePage() {
                 onCreateClick={handleFindRecipes}
                 isSaved={isSaved}
                 onToggleSave={toggleFavorite}
+                onRetryImage={regenerateImage}
               />
             </div>
 
@@ -323,6 +327,7 @@ export default function HomePage() {
                   href="/saved"
                   isSaved={isSaved}
                   onToggleSave={toggleFavorite}
+                  onRetryImage={regenerateImage}
                 />
               </div>
             )}
@@ -335,6 +340,7 @@ export default function HomePage() {
                   href="/recipes/quick"
                   isSaved={isSaved}
                   onToggleSave={toggleFavorite}
+                  onRetryImage={regenerateImage}
                 />
               </div>
             )}
@@ -347,6 +353,7 @@ export default function HomePage() {
                   href="/recipes/healthy"
                   isSaved={isSaved}
                   onToggleSave={toggleFavorite}
+                  onRetryImage={regenerateImage}
                 />
               </div>
             )}
@@ -359,6 +366,7 @@ export default function HomePage() {
                   href="/recipes/desserts"
                   isSaved={isSaved}
                   onToggleSave={toggleFavorite}
+                  onRetryImage={regenerateImage}
                 />
               </div>
             )}

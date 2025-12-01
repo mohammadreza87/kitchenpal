@@ -7,6 +7,7 @@ import { gsap } from '@/lib/gsap'
 import { useFavorites, useGeneratedRecipes, useReviews } from '@/hooks'
 import { ReviewsTab } from '@/components/recipe/ReviewsTab'
 import { useUser } from '@/hooks/useUser'
+import type { GeneratedRecipeItem } from '@/hooks/useGeneratedRecipes'
 
 // Mock recipe data - comprehensive version of the home page recipes
 const mockRecipes = [
@@ -364,17 +365,19 @@ export default function RecipePage() {
   const router = useRouter()
   const { user } = useUser()
   const { isSaved, toggleFavorite } = useFavorites()
-  const { generatedRecipes } = useGeneratedRecipes()
+  const { generatedRecipes, regenerateImage, regeneratingIds } = useGeneratedRecipes()
   const { getAverageRating, getReviewCount } = useReviews()
   const containerRef = useRef<HTMLDivElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const hasAnimated = useRef(false)
 
   const [recipe, setRecipe] = useState<typeof mockRecipes[0] | null>(null)
+  const [generatedRecipe, setGeneratedRecipe] = useState<GeneratedRecipeItem | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<RecipeTab>('ingredients')
   const [portions, setPortions] = useState(4)
   const [showMenu, setShowMenu] = useState(false)
+  const [imageError, setImageError] = useState(false)
 
   // Get actual rating from reviews
   const reviewCount = getReviewCount(id)
@@ -382,25 +385,28 @@ export default function RecipePage() {
 
   useEffect(() => {
     // First check generated recipes
-    const generatedRecipe = generatedRecipes.find(r => r.id === id)
-    if (generatedRecipe) {
+    const foundGeneratedRecipe = generatedRecipes.find(r => r.id === id)
+    if (foundGeneratedRecipe) {
+      setGeneratedRecipe(foundGeneratedRecipe)
       setRecipe({
-        id: generatedRecipe.id,
-        name: generatedRecipe.title,
+        id: foundGeneratedRecipe.id,
+        name: foundGeneratedRecipe.title,
         author: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'You',
-        rating: generatedRecipe.rating || 5.0,
+        rating: foundGeneratedRecipe.rating || 5.0,
         reviewCount: 0,
-        prepTime: generatedRecipe.prepTime || '30 min',
-        cookTime: generatedRecipe.cookTime || '30 min',
-        servings: generatedRecipe.servings || 4,
-        difficulty: generatedRecipe.difficulty || 'Medium',
-        calories: generatedRecipe.calories || 0,
-        description: generatedRecipe.description,
-        imageUrl: generatedRecipe.imageUrl,
-        ingredients: generatedRecipe.ingredients || [],
-        instructions: generatedRecipe.instructions || [],
+        prepTime: foundGeneratedRecipe.prepTime || '30 min',
+        cookTime: foundGeneratedRecipe.cookTime || '30 min',
+        servings: foundGeneratedRecipe.servings || 4,
+        difficulty: foundGeneratedRecipe.difficulty || 'Medium',
+        calories: foundGeneratedRecipe.calories || 0,
+        description: foundGeneratedRecipe.description,
+        imageUrl: foundGeneratedRecipe.imageUrl,
+        ingredients: foundGeneratedRecipe.ingredients || [],
+        instructions: foundGeneratedRecipe.instructions || [],
       })
-      setPortions(generatedRecipe.servings || 4)
+      setPortions(foundGeneratedRecipe.servings || 4)
+      // Reset image error when image URL changes
+      setImageError(false)
       setLoading(false)
       return
     }
@@ -409,6 +415,7 @@ export default function RecipePage() {
     const foundRecipe = mockRecipes.find(r => r.id === id)
     if (foundRecipe) {
       setRecipe(foundRecipe)
+      setGeneratedRecipe(null)
       setPortions(foundRecipe.servings || 4)
     }
 
@@ -499,23 +506,59 @@ export default function RecipePage() {
     <div ref={containerRef} className="min-h-screen bg-background">
       {/* Hero Image Section */}
       <div className="relative h-[45vh] w-full">
-        {recipe.imageUrl ? (
+        {recipe.imageUrl && !imageError && !regeneratingIds.has(id) ? (
           <Image
             src={recipe.imageUrl}
             alt={recipe.name}
             fill
             className="object-cover"
             priority
+            onError={() => setImageError(true)}
           />
         ) : (
-          <div className="w-full h-full bg-brand-primary-container flex items-center justify-center">
-            <Image
-              src="/assets/icons/Fork.svg"
-              alt="Recipe placeholder"
-              width={64}
-              height={64}
-              className="opacity-30"
-            />
+          <div className="w-full h-full bg-gradient-to-br from-amber-50 to-orange-50 flex flex-col items-center justify-center">
+            {/* Food icon placeholder */}
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/80 shadow-sm">
+              <svg
+                width="40"
+                height="40"
+                viewBox="0 0 24 24"
+                fill="none"
+                className="text-amber-400"
+              >
+                <path
+                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"
+                  fill="currentColor"
+                />
+              </svg>
+            </div>
+
+            {/* Regenerate button - only show for user's own generated recipes */}
+            {generatedRecipe && user && generatedRecipe.userId === user.id && (
+              <button
+                onClick={() => regenerateImage(id)}
+                disabled={regeneratingIds.has(id)}
+                className="mt-4 flex items-center gap-2 rounded-full bg-white/90 px-5 py-2.5 text-sm font-medium text-amber-600 shadow-md transition-all hover:bg-white hover:shadow-lg active:scale-95 disabled:opacity-50"
+              >
+                {regeneratingIds.has(id) ? (
+                  <>
+                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    <span>Generating...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M23 4v6h-6M1 20v-6h6" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <span>Generate Image</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
         )}
 
@@ -591,6 +634,23 @@ export default function RecipePage() {
                   />
                   {isSaved(recipe?.id || '') ? 'Remove from Favorites' : 'Save to Favorites'}
                 </button>
+                {/* Regenerate Image option - only for user's own generated recipes */}
+                {generatedRecipe && user && generatedRecipe.userId === user.id && (
+                  <button
+                    onClick={() => {
+                      regenerateImage(id)
+                      setShowMenu(false)
+                    }}
+                    disabled={regeneratingIds.has(id)}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-[#363636] hover:bg-neutral-50 transition-colors border-t border-neutral-100 disabled:opacity-50"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF7043" strokeWidth="2">
+                      <path d="M23 4v6h-6M1 20v-6h6" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    {regeneratingIds.has(id) ? 'Generating...' : 'Regenerate Image'}
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     // Share functionality

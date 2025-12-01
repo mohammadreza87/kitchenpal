@@ -25,7 +25,17 @@ export function BottomNav() {
 
   // Pages that should keep the profile tab active
   const profileRelatedPaths = ['/profile', '/feedback', '/about', '/terms', '/privacy', '/licenses']
-  const effectiveBasePath = profileRelatedPaths.includes(basePath) ? '/profile' : basePath
+
+  // Pages that should keep the home tab active (recipe details, recipes list, etc.)
+  const homeRelatedPaths = ['/home', '/recipe', '/recipes']
+
+  // Determine which tab should be active
+  let effectiveBasePath = basePath
+  if (profileRelatedPaths.includes(basePath)) {
+    effectiveBasePath = '/profile'
+  } else if (homeRelatedPaths.includes(basePath)) {
+    effectiveBasePath = '/home'
+  }
 
   const activeIndex = navItems.findIndex(item => item.href === effectiveBasePath)
 

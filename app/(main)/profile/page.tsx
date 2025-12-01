@@ -52,12 +52,12 @@ export default function ProfilePage() {
 
       {/* Profile Info */}
       <div data-animate className="mb-6 flex items-center gap-4">
-        <div className="relative h-16 w-16 overflow-hidden rounded-full bg-gray-200">
+        <div className="relative h-16 w-16 overflow-hidden rounded-2xl bg-gray-200">
           <Image
             src={avatarUrl}
             alt="Profile"
             fill
-            className="object-cover"
+            className="object-cover scale-110 rounded-2xl"
           />
         </div>
         <div>

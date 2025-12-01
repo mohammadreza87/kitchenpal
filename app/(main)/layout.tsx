@@ -3,6 +3,7 @@
 import { BottomNav } from '@/components/navigation/BottomNav'
 import { PageTransition } from '@/components/transitions'
 import { FavoritesProvider, GeneratedRecipesProvider, ReviewsProvider } from '@/hooks'
+import { ToastProvider } from '@/components/ui/Toast'
 import { usePathname } from 'next/navigation'
 
 export default function MainLayout({
@@ -15,17 +16,19 @@ export default function MainLayout({
   const isChat = basePath === '/chat'
 
   return (
-    <GeneratedRecipesProvider>
-      <FavoritesProvider>
-        <ReviewsProvider>
-          <div className="flex min-h-screen flex-col bg-background">
-            <main className="flex-1 pb-24 overflow-hidden">
-              {isChat ? children : <PageTransition>{children}</PageTransition>}
-            </main>
-            <BottomNav />
-          </div>
-        </ReviewsProvider>
-      </FavoritesProvider>
-    </GeneratedRecipesProvider>
+    <ToastProvider>
+      <GeneratedRecipesProvider>
+        <FavoritesProvider>
+          <ReviewsProvider>
+            <div className="flex min-h-screen flex-col bg-background">
+              <main className="flex-1 pb-24 overflow-hidden">
+                {isChat ? children : <PageTransition>{children}</PageTransition>}
+              </main>
+              <BottomNav />
+            </div>
+          </ReviewsProvider>
+        </FavoritesProvider>
+      </GeneratedRecipesProvider>
+    </ToastProvider>
   )
 }

@@ -12,7 +12,8 @@ import {
   SocialItem,
   PersonalInfoSkeleton,
   AboutYouModal,
-  SocialEditModal
+  SocialEditModal,
+  AvatarPickerModal
 } from '@/components/profile'
 
 type SocialLinkKey = 'website' | 'instagram' | 'youtube' | 'tiktok'
@@ -24,6 +25,7 @@ export default function PersonalInfoPage() {
 
   const [isEditMode, setIsEditMode] = useState(false)
   const [isAboutModalOpen, setIsAboutModalOpen] = useState(false)
+  const [isAvatarPickerOpen, setIsAvatarPickerOpen] = useState(false)
   const [saving, setSaving] = useState(false)
 
   // Form state for edit mode
@@ -124,14 +126,19 @@ export default function PersonalInfoPage() {
     }
   }
 
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
+  const handleAvatarChange = async (file: File) => {
     try {
       await uploadAvatar(file)
     } catch (error) {
       console.error('Failed to upload avatar:', error)
+    }
+  }
+
+  const handleSelectAvatar = async (avatarUrl: string) => {
+    try {
+      await updateProfile({ avatar_url: avatarUrl })
+    } catch (error) {
+      console.error('Failed to update avatar:', error)
     }
   }
 
@@ -235,10 +242,13 @@ export default function PersonalInfoPage() {
                   src={avatarUrl}
                   alt="Profile"
                   fill
-                  className="object-cover"
+                  className="object-cover scale-110 rounded-2xl"
                 />
               </div>
-              <label className="absolute -bottom-3 left-1/2 -translate-x-1/2 flex items-center justify-center gap-1.5 rounded-full bg-white px-4 py-2 shadow-md transition-all hover:shadow-lg active:scale-95 cursor-pointer">
+              <button
+                onClick={() => setIsAvatarPickerOpen(true)}
+                className="absolute -bottom-3 left-1/2 -translate-x-1/2 flex items-center justify-center gap-1.5 rounded-full bg-white px-4 py-2 shadow-md transition-all hover:shadow-lg active:scale-95 cursor-pointer"
+              >
                 <Image
                   src="/assets/icons/Camera.svg"
                   alt=""
@@ -247,13 +257,7 @@ export default function PersonalInfoPage() {
                   style={{ filter: 'invert(52%) sepia(67%) saturate(1042%) hue-rotate(346deg) brightness(101%) contrast(97%)' }}
                 />
                 <span className="text-sm font-medium" style={{ color: '#FF7043' }}>Edit</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarChange}
-                  className="hidden"
-                />
-              </label>
+              </button>
             </div>
           </div>
         )}
@@ -421,6 +425,15 @@ export default function PersonalInfoPage() {
         placeholder={socialModal.placeholder}
         initialValue={socialModal.type && socialLinks ? (socialLinks[socialModal.type] || '') : ''}
         onSave={handleSaveSocialLink}
+      />
+
+      {/* Avatar Picker Modal */}
+      <AvatarPickerModal
+        isOpen={isAvatarPickerOpen}
+        onClose={() => setIsAvatarPickerOpen(false)}
+        currentAvatar={avatarUrl}
+        onSelectAvatar={handleSelectAvatar}
+        onUploadAvatar={handleAvatarChange}
       />
     </div>
   )

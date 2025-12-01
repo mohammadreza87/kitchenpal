@@ -35,7 +35,7 @@ export interface GeneratedImage {
  * Property 4: Image generation error fallback
  * Validates: Requirements 2.4
  */
-export const FALLBACK_PLACEHOLDER_IMAGE = '/assets/illustrations/food/placeholder-recipe.svg'
+export const FALLBACK_PLACEHOLDER_IMAGE = '/assets/illustrations/food/Mediterranean Diet Dish.svg'
 
 /**
  * Error types for Image service

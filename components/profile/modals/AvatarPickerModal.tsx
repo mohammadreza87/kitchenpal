@@ -154,7 +154,7 @@ export function AvatarPickerModal({
                 key={index}
                 onClick={() => setSelectedAvatar(avatar)}
                 className={cn(
-                  'relative aspect-square rounded-2xl overflow-hidden transition-all',
+                  'relative aspect-square rounded-full overflow-hidden transition-all',
                   isSelected && 'ring-3 ring-brand-primary ring-offset-2',
                   isCurrent && !isSelected && 'ring-2 ring-gray-300 ring-offset-1'
                 )}
@@ -163,7 +163,7 @@ export function AvatarPickerModal({
                   src={avatar}
                   alt={`Avatar option ${index + 1}`}
                   fill
-                  className="object-cover"
+                  className="object-cover scale-110"
                 />
                 {isSelected && (
                   <div className="absolute inset-0 bg-brand-primary/20 flex items-center justify-center">
