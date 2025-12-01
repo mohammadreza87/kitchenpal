@@ -372,7 +372,7 @@ export function useChat(initialConversationId?: string) {
       }
 
       const data = await response.json()
-      const imageUrl = data.imageUrl || '/assets/illustrations/food/placeholder-recipe.svg'
+      const imageUrl = data.imageUrl || '/assets/illustrations/food/Mediterranean Diet Dish.svg'
 
       // Store the image URL
       setState(prev => ({
@@ -389,7 +389,7 @@ export function useChat(initialConversationId?: string) {
       console.error('Failed to generate recipe image:', error)
       
       // Use fallback placeholder
-      const fallbackUrl = '/assets/illustrations/food/placeholder-recipe.svg'
+      const fallbackUrl = '/assets/illustrations/food/Mediterranean Diet Dish.svg'
       setState(prev => ({
         ...prev,
         isGeneratingImage: false,

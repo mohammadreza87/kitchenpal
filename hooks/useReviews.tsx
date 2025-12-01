@@ -49,7 +49,7 @@ export function ReviewsProvider({ children }: { children: ReactNode }) {
       }
 
       // Get unique user IDs to fetch their current profile avatars
-      const userIds = [...new Set((data || []).map(row => row.user_id).filter(Boolean))]
+      const userIds = Array.from(new Set((data || []).map(row => row.user_id).filter(Boolean)))
 
       // Fetch current profile data for all reviewers
       let profilesMap: Record<string, { avatar_url: string; full_name: string }> = {}

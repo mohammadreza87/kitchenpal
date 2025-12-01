@@ -270,6 +270,15 @@ export function GeneratedRecipesProvider({ children }: { children: ReactNode }) 
       return
     }
 
+    // Check if user owns this recipe - only allow regeneration for owned recipes
+    if (!user || recipe.userId !== user.id) {
+      console.error('Cannot regenerate image: you do not own this recipe')
+      window.dispatchEvent(new CustomEvent('image-regenerated', {
+        detail: { id, title: recipe.title, success: false, error: 'You can only regenerate images for your own recipes' }
+      }))
+      return
+    }
+
     // Check if already regenerating
     if (regeneratingIds.has(id)) {
       return
@@ -281,7 +290,7 @@ export function GeneratedRecipesProvider({ children }: { children: ReactNode }) 
     // Fire and forget - runs in background
     const doRegenerate = async () => {
       try {
-        // Call the image generation API
+        // Call the image generation API (server handles persistence to Supabase storage)
         const response = await fetch('/api/image', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -302,28 +311,35 @@ export function GeneratedRecipesProvider({ children }: { children: ReactNode }) 
           throw new Error('Image generation returned placeholder')
         }
 
-        // Update the recipe in the database (only if user owns it)
-        if (user && recipe.userId === user.id) {
-          // Update user_generated_recipes table
-          const { error } = await supabase
-            .from('user_generated_recipes')
-            .update({ image_url: newImageUrl })
-            .eq('id', id)
-            .eq('user_id', user.id)
+        console.log('[Regenerate] Got new image URL:', newImageUrl)
+        console.log('[Regenerate] User:', user?.id, 'Recipe userId:', recipe.userId, 'Recipe isOwn:', recipe.isOwn)
 
-          if (error) {
-            console.error('Failed to update image URL in user_generated_recipes:', error)
-          }
+        // The API now returns a Supabase storage URL, use it directly
+        // Update the recipe in the database
+        // Update user_generated_recipes table
+        const { data: updateData, error, count } = await supabase
+          .from('user_generated_recipes')
+          .update({ image_url: newImageUrl })
+          .eq('id', id)
+          .select()
 
-          // Also update the public recipes table
-          const { error: recipesError } = await supabase
-            .from('recipes')
-            .update({ image_url: newImageUrl })
-            .eq('id', id)
+        if (error) {
+          console.error('[Regenerate] Failed to update image URL in user_generated_recipes:', error)
+        } else {
+          console.log('[Regenerate] user_generated_recipes update result:', updateData?.length || 0, 'rows affected')
+        }
 
-          if (recipesError) {
-            console.error('Failed to update image URL in recipes table:', recipesError)
-          }
+        // Also update the public recipes table
+        const { data: recipesData, error: recipesError } = await supabase
+          .from('recipes')
+          .update({ image_url: newImageUrl })
+          .eq('id', id)
+          .select()
+
+        if (recipesError) {
+          console.error('[Regenerate] Failed to update image URL in recipes table:', recipesError)
+        } else {
+          console.log('[Regenerate] recipes table update result:', recipesData?.length || 0, 'rows affected')
         }
 
         // Update local state

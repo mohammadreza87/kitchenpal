@@ -151,7 +151,7 @@ Provide exactly one recipe that matches the identified dish.`
           }),
         })
         const imageData = await imageResponse.json()
-        if (imageData.imageUrl && imageData.imageUrl !== '/assets/illustrations/food/placeholder-recipe.svg') {
+        if (imageData.imageUrl && imageData.imageUrl !== '/assets/illustrations/food/Mediterranean Diet Dish.svg') {
           imageUrl = imageData.imageUrl
         }
       } catch (imgError) {
