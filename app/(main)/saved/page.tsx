@@ -5,8 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { gsap } from '@/lib/gsap'
 import { RecipeCard } from '@/components/home'
-import { useFavorites } from '@/hooks'
-import type { FavoriteRecipe } from '@/lib/services/favorites.service'
+import { useFavorites, type FavoriteRecipe } from '@/hooks/useFavorites'
 
 // Category definitions for grouping favorites
 const CATEGORY_GROUPS = [

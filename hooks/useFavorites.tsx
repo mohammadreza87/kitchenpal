@@ -1,67 +1,19 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import { useUser } from './useUser'
-import {
-  getSavedRecipes,
-  getSavedRecipeIds,
-  toggleSaveRecipe,
-  type FavoriteRecipe,
-} from '@/lib/services/favorites.service'
-import { detectRecipeCategories } from './useGeneratedRecipes'
 
-
-const LOCAL_STORAGE_KEY = 'kitchenpal_favorites'
-const GENERATED_RECIPES_STORAGE_KEY = 'kitchenpal_generated_recipes'
-
-// Helper to check if a recipe ID is a generated recipe (stored locally)
-function isLocalRecipeId(id: string): boolean {
-  return id.startsWith('generated-')
-}
-
-// Helper to get generated recipes from localStorage
-function getGeneratedRecipesFromStorage(): Record<string, Omit<FavoriteRecipe, 'savedAt'>> {
-  if (typeof window === 'undefined') return {}
-  try {
-    const stored = localStorage.getItem(GENERATED_RECIPES_STORAGE_KEY)
-    if (!stored) return {}
-    const recipes = JSON.parse(stored)
-    // Convert array to record by ID
-    const record: Record<string, Omit<FavoriteRecipe, 'savedAt'>> = {}
-    for (const r of recipes) {
-      record[r.id] = {
-        id: r.id,
-        title: r.title,
-        description: r.description,
-        imageUrl: r.imageUrl,
-        rating: r.rating || 5,
-      }
-    }
-    return record
-  } catch {
-    return {}
-  }
-}
-
-// Helper to get local favorites from localStorage (for generated recipes)
-function getLocalFavoritesFromStorage(): Set<string> {
-  if (typeof window === 'undefined') return new Set()
-  try {
-    const stored = localStorage.getItem(LOCAL_STORAGE_KEY)
-    return stored ? new Set(JSON.parse(stored)) : new Set()
-  } catch {
-    return new Set()
-  }
-}
-
-// Helper to save local favorites to localStorage
-function saveLocalFavoritesToStorage(ids: Set<string>): void {
-  if (typeof window === 'undefined') return
-  try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(Array.from(ids)))
-  } catch (e) {
-    console.error('Error saving local favorites:', e)
-  }
+export interface FavoriteRecipe {
+  id: string
+  title: string
+  description: string
+  imageUrl: string
+  rating: number
+  prepTime?: string
+  difficulty?: string
+  calories?: number
+  categories?: string[]
 }
 
 interface FavoritesContextType {
@@ -81,60 +33,60 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   const { user } = useUser()
   const [favorites, setFavorites] = useState<FavoriteRecipe[]>([])
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
-  const [localSavedIds, setLocalSavedIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const supabase = createClient()
 
   // Load favorites when user changes
   const loadFavorites = useCallback(async () => {
+    if (!user) {
+      setFavorites([])
+      setSavedIds(new Set())
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     setError(null)
 
     try {
-      // Load local favorites from localStorage (for generated recipes)
-      const localIds = getLocalFavoritesFromStorage()
-      setLocalSavedIds(localIds)
+      // Get all favorite recipes from user_generated_recipes
+      const { data, error: fetchError } = await supabase
+        .from('user_generated_recipes')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_favorite', true)
+        .order('created_at', { ascending: false })
 
-      // Get generated recipes and filter to only favorites
-      const generatedRecipes = getGeneratedRecipesFromStorage()
-      const localFavorites: FavoriteRecipe[] = Array.from(localIds)
-        .map(id => {
-          const recipe = generatedRecipes[id]
-          if (!recipe) return null
-          return {
-            ...recipe,
-            savedAt: new Date().toISOString(),
-          }
-        })
-        .filter((f): f is FavoriteRecipe => f !== null)
-
-      if (!user) {
-        // If no user, only show local favorites
-        setFavorites(localFavorites)
-        setSavedIds(localIds)
-        setLoading(false)
+      if (fetchError) {
+        console.error('Error fetching favorites:', fetchError)
+        setError('Failed to load favorites')
+        setFavorites([])
+        setSavedIds(new Set())
         return
       }
 
-      // Load database favorites for logged-in users
-      const [dbFavs, dbIds] = await Promise.all([
-        getSavedRecipes(),
-        getSavedRecipeIds(),
-      ])
+      const favoriteRecipes: FavoriteRecipe[] = (data || []).map(row => ({
+        id: row.id,
+        title: row.title,
+        description: row.description || '',
+        imageUrl: row.image_url || '',
+        rating: row.rating || 5,
+        prepTime: row.prep_time,
+        difficulty: row.difficulty,
+        calories: row.calories,
+        categories: row.categories || [],
+      }))
 
-      // Combine local and database favorites
-      const allFavorites = [...localFavorites, ...dbFavs]
-      const allIds = new Set([...Array.from(localIds), ...Array.from(dbIds)])
-
-      setFavorites(allFavorites)
-      setSavedIds(allIds)
+      setFavorites(favoriteRecipes)
+      setSavedIds(new Set(favoriteRecipes.map(r => r.id)))
     } catch (err) {
       console.error('Error loading favorites:', err)
       setError('Failed to load favorites')
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }, [user, supabase])
 
   useEffect(() => {
     loadFavorites()
@@ -147,78 +99,66 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
 
   // Toggle favorite status
   const toggleFavorite = useCallback(async (recipeId: string): Promise<boolean> => {
-    // Check if this is a generated recipe (stored locally)
-    if (isLocalRecipeId(recipeId)) {
-      // Handle generated recipe with localStorage
-      const wasSaved = localSavedIds.has(recipeId)
-      const newLocalIds = new Set(localSavedIds)
-
-      if (wasSaved) {
-        newLocalIds.delete(recipeId)
-      } else {
-        newLocalIds.add(recipeId)
-      }
-
-      setLocalSavedIds(newLocalIds)
-      saveLocalFavoritesToStorage(newLocalIds)
-
-      // Update combined savedIds
-      const newSavedIds = new Set(savedIds)
-      if (wasSaved) {
-        newSavedIds.delete(recipeId)
-      } else {
-        newSavedIds.add(recipeId)
-      }
-      setSavedIds(newSavedIds)
-
-      // Update favorites list
-      if (wasSaved) {
-        setFavorites(prev => prev.filter(f => f.id !== recipeId))
-      } else {
-        // Get generated recipe from storage
-        const generatedRecipes = getGeneratedRecipesFromStorage()
-        const recipe = generatedRecipes[recipeId]
-
-        if (recipe) {
-          setFavorites(prev => [{
-            ...recipe,
-            savedAt: new Date().toISOString(),
-          }, ...prev])
-        }
-      }
-
-      return true
-    }
-
-    // Handle real recipe with database
     if (!user) {
       setError('Please log in to save recipes')
       return false
     }
 
-    // Optimistic update
     const wasSaved = savedIds.has(recipeId)
-    const newSavedIds = new Set(savedIds)
 
+    // Optimistic update
+    const newSavedIds = new Set(savedIds)
     if (wasSaved) {
       newSavedIds.delete(recipeId)
+      setFavorites(prev => prev.filter(f => f.id !== recipeId))
     } else {
       newSavedIds.add(recipeId)
     }
     setSavedIds(newSavedIds)
 
     try {
-      const result = await toggleSaveRecipe(recipeId)
+      // Update is_favorite in database
+      const { error: updateError } = await supabase
+        .from('user_generated_recipes')
+        .update({ is_favorite: !wasSaved })
+        .eq('id', recipeId)
+        .eq('user_id', user.id)
 
-      if (!result.success) {
+      if (updateError) {
         // Revert optimistic update
         setSavedIds(savedIds)
+        if (!wasSaved) {
+          setFavorites(prev => prev.filter(f => f.id !== recipeId))
+        }
+        console.error('Error toggling favorite:', updateError)
         setError('Failed to update favorite')
         return false
       }
 
-      // Refresh favorites list to get updated data
-      await loadFavorites()
+      // If adding to favorites, fetch the recipe data
+      if (!wasSaved) {
+        const { data: recipeData } = await supabase
+          .from('user_generated_recipes')
+          .select('*')
+          .eq('id', recipeId)
+          .single()
+
+        if (recipeData) {
+          const newFavorite: FavoriteRecipe = {
+            id: recipeData.id,
+            title: recipeData.title,
+            description: recipeData.description || '',
+            imageUrl: recipeData.image_url || '',
+            rating: recipeData.rating || 5,
+            prepTime: recipeData.prep_time,
+            difficulty: recipeData.difficulty,
+            calories: recipeData.calories,
+            categories: recipeData.categories || [],
+          }
+          setFavorites(prev => [newFavorite, ...prev])
+        }
+      }
+
       return true
     } catch (err) {
       // Revert optimistic update
@@ -227,7 +167,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       setError('Failed to update favorite')
       return false
     }
-  }, [user, savedIds, localSavedIds, loadFavorites])
+  }, [user, savedIds, supabase])
 
   // Refresh favorites
   const refreshFavorites = useCallback(async () => {
@@ -238,17 +178,12 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   const getFavoritesByCategory = useCallback((category: string): FavoriteRecipe[] => {
     const normalizedCategory = category.toLowerCase()
     return favorites.filter(recipe => {
-      // Check if recipe has categories and includes the specified category
       if (recipe.categories && recipe.categories.length > 0) {
-        return recipe.categories.some(cat => cat.toLowerCase() === normalizedCategory)
+        return recipe.categories.some(cat => cat.toLowerCase().includes(normalizedCategory))
       }
-      // Fallback: detect categories from recipe name/description if no categories set
-      const detectedCategories = detectRecipeCategories({
-        name: recipe.title,
-        description: recipe.description,
-        calories: recipe.calories,
-      })
-      return detectedCategories.some(cat => cat.toLowerCase() === normalizedCategory)
+      // Fallback: check title and description
+      return recipe.title.toLowerCase().includes(normalizedCategory) ||
+        recipe.description.toLowerCase().includes(normalizedCategory)
     })
   }, [favorites])
 

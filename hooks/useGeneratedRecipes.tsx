@@ -183,6 +183,25 @@ export function GeneratedRecipesProvider({ children }: { children: ReactNode }) 
       }
 
       setGeneratedRecipes(prev => [newRecipe, ...prev])
+
+      // Also insert into public recipes table for discovery
+      try {
+        await supabase.from('recipes').insert({
+          id: data.id, // keep IDs aligned so favorites FK works
+          name: recipe.title,
+          author_id: user.id,
+          author_name: user.user_metadata?.full_name || user.email || 'KitchenPal User',
+          description: recipe.description,
+          image_url: recipe.imageUrl,
+          rating: recipe.rating,
+          prep_time: recipe.prepTime,
+          cook_time: recipe.cookTime,
+          calories: recipe.calories,
+          difficulty: recipe.difficulty,
+        })
+      } catch (err) {
+        console.error('Failed to insert generated recipe into public recipes:', err)
+      }
     } catch (e) {
       console.error('Failed to save generated recipe:', e)
     }

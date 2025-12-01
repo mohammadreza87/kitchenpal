@@ -1,12 +1,15 @@
 'use client'
 
-import { useRef, useEffect, useMemo } from 'react'
+import { useRef, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { gsap } from '@/lib/gsap'
 import { RecipeCard } from '@/components/home'
 import { useGeneratedRecipes, useFavorites } from '@/hooks'
+import { createClient } from '@/lib/supabase/client'
+import { createRecipeService } from '@/lib/services/recipe.service'
+import type { Recipe } from '@/types/chat'
 
 interface RecipeSectionProps {
   title: string
@@ -107,6 +110,9 @@ export default function HomePage() {
   const hasAnimated = useRef(false)
   const { generatedRecipes, getNewRecipes, loading } = useGeneratedRecipes()
   const { savedIds, isSaved, toggleFavorite } = useFavorites()
+  const [supabaseRecipes, setSupabaseRecipes] = useState<Recipe[]>([])
+  const [loadingRecipes, setLoadingRecipes] = useState(false)
+  const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
     if (!containerRef.current || hasAnimated.current) return
@@ -128,20 +134,39 @@ export default function HomePage() {
     )
   }, [])
 
+  useEffect(() => {
+    const loadRecipes = async () => {
+      try {
+        setLoadingRecipes(true)
+        const service = createRecipeService(supabase)
+        const recipes = await service.getAllRecipes()
+        setSupabaseRecipes(recipes)
+      } catch (err) {
+        console.error('Failed to load recipes from Supabase:', err)
+      } finally {
+        setLoadingRecipes(false)
+      }
+    }
+    loadRecipes()
+  }, [supabase])
+
   const handleFindRecipes = () => {
     router.push('/chat')
   }
 
+  const baseRecipes = supabaseRecipes.length > 0 ? supabaseRecipes : generatedRecipes
+
   // Get new recipes (most recent)
   const newRecipes = useMemo(() => {
-    return getNewRecipes(10).map(r => ({
+    const source = baseRecipes.length > 0 ? baseRecipes.slice(0, 10) : getNewRecipes(10)
+    return source.map(r => ({
       id: r.id,
       title: r.title,
       description: r.description,
       imageUrl: r.imageUrl,
       rating: r.rating,
     }))
-  }, [getNewRecipes])
+  }, [baseRecipes, getNewRecipes])
 
   // Get user's saved/favorite recipes from generated recipes
   const favoriteRecipes = useMemo(() => {
@@ -159,7 +184,7 @@ export default function HomePage() {
 
   // Get quick & easy recipes (under 30 min total time or 'easy' difficulty)
   const quickRecipes = useMemo(() => {
-    return generatedRecipes
+    return baseRecipes
       .filter(r =>
         (r.totalTime && r.totalTime <= 30) ||
         r.difficulty?.toLowerCase() === 'easy' ||
@@ -169,15 +194,15 @@ export default function HomePage() {
       .map(r => ({
         id: r.id,
         title: r.title,
-        description: r.description,
-        imageUrl: r.imageUrl,
-        rating: r.rating,
-      }))
-  }, [generatedRecipes])
+      description: r.description,
+      imageUrl: r.imageUrl,
+      rating: r.rating,
+    }))
+  }, [baseRecipes])
 
   // Get healthy/low-carb recipes
   const healthyRecipes = useMemo(() => {
-    return generatedRecipes
+    return baseRecipes
       .filter(r =>
         r.categories.some(c =>
           c.toLowerCase().includes('healthy') ||
