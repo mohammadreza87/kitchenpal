@@ -1,10 +1,9 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import { useUser } from './useUser'
 import type { Review } from '@/types/chat'
-
-const REVIEWS_STORAGE_KEY = 'kitchenpal_recipe_reviews'
 
 export interface ReviewInput {
   recipeId: string
@@ -13,6 +12,8 @@ export interface ReviewInput {
 }
 
 interface ReviewsContextType {
+  reviews: Review[]
+  loading: boolean
   getReviewsForRecipe: (recipeId: string) => Review[]
   getAverageRating: (recipeId: string) => number
   getReviewCount: (recipeId: string) => number
@@ -21,39 +22,57 @@ interface ReviewsContextType {
   deleteReview: (reviewId: string) => Promise<boolean>
   hasUserReviewed: (recipeId: string) => boolean
   getUserReview: (recipeId: string) => Review | null
+  refreshReviews: () => Promise<void>
 }
 
 const ReviewsContext = createContext<ReviewsContextType | null>(null)
 
-// Helper to get all reviews from localStorage
-function getReviewsFromStorage(): Review[] {
-  if (typeof window === 'undefined') return []
-  try {
-    const stored = localStorage.getItem(REVIEWS_STORAGE_KEY)
-    return stored ? JSON.parse(stored) : []
-  } catch {
-    return []
-  }
-}
-
-// Helper to save reviews to localStorage
-function saveReviewsToStorage(reviews: Review[]): void {
-  if (typeof window === 'undefined') return
-  try {
-    localStorage.setItem(REVIEWS_STORAGE_KEY, JSON.stringify(reviews))
-  } catch (e) {
-    console.error('Error saving reviews:', e)
-  }
-}
-
 export function ReviewsProvider({ children }: { children: ReactNode }) {
   const { user } = useUser()
   const [reviews, setReviews] = useState<Review[]>([])
+  const [loading, setLoading] = useState(true)
+  const supabase = createClient()
+
+  // Fetch all reviews from Supabase
+  const fetchReviews = useCallback(async () => {
+    try {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('generated_recipe_reviews')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching reviews:', error)
+        setReviews([])
+        return
+      }
+
+      // Transform database format to app format
+      const transformedReviews: Review[] = (data || []).map((row) => ({
+        id: row.id,
+        recipeId: row.recipe_id,
+        userId: row.user_id,
+        userName: row.user_name || 'Anonymous',
+        userAvatar: row.user_avatar || '',
+        date: row.created_at,
+        rating: row.rating,
+        comment: row.comment || '',
+      }))
+
+      setReviews(transformedReviews)
+    } catch (e) {
+      console.error('Error fetching reviews:', e)
+      setReviews([])
+    } finally {
+      setLoading(false)
+    }
+  }, [supabase])
 
   // Load reviews on mount
   useEffect(() => {
-    setReviews(getReviewsFromStorage())
-  }, [])
+    fetchReviews()
+  }, [fetchReviews])
 
   // Get reviews for a specific recipe
   const getReviewsForRecipe = useCallback((recipeId: string): Review[] => {
@@ -96,44 +115,92 @@ export function ReviewsProvider({ children }: { children: ReactNode }) {
       return false
     }
 
-    const newReview: Review = {
-      id: `review-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      recipeId: input.recipeId,
-      userId: user.id,
-      userName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Anonymous',
-      userAvatar: user.user_metadata?.avatar_url || '',
-      date: new Date().toISOString(),
-      rating: input.rating,
-      comment: input.comment,
+    try {
+      const userName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Anonymous'
+      const userAvatar = user.user_metadata?.avatar_url || ''
+
+      const { data, error } = await supabase
+        .from('generated_recipe_reviews')
+        .insert({
+          recipe_id: input.recipeId,
+          user_id: user.id,
+          user_name: userName,
+          user_avatar: userAvatar,
+          rating: input.rating,
+          comment: input.comment,
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error adding review:', error)
+        return false
+      }
+
+      // Add to local state
+      const newReview: Review = {
+        id: data.id,
+        recipeId: data.recipe_id,
+        userId: data.user_id,
+        userName: data.user_name,
+        userAvatar: data.user_avatar || '',
+        date: data.created_at,
+        rating: data.rating,
+        comment: data.comment || '',
+      }
+
+      setReviews(prev => [newReview, ...prev])
+      return true
+    } catch (e) {
+      console.error('Error adding review:', e)
+      return false
     }
-
-    const updatedReviews = [...reviews, newReview]
-    setReviews(updatedReviews)
-    saveReviewsToStorage(updatedReviews)
-
-    return true
-  }, [user, reviews, hasUserReviewed])
+  }, [user, supabase, hasUserReviewed])
 
   // Update an existing review
   const updateReview = useCallback(async (reviewId: string, input: Partial<ReviewInput>): Promise<boolean> => {
     if (!user) return false
 
-    const reviewIndex = reviews.findIndex(r => r.id === reviewId && r.userId === user.id)
-    if (reviewIndex === -1) return false
+    const existingReview = reviews.find(r => r.id === reviewId && r.userId === user.id)
+    if (!existingReview) return false
 
-    const updatedReviews = [...reviews]
-    updatedReviews[reviewIndex] = {
-      ...updatedReviews[reviewIndex],
-      ...(input.rating !== undefined && { rating: input.rating }),
-      ...(input.comment !== undefined && { comment: input.comment }),
-      date: new Date().toISOString(), // Update the date
+    try {
+      const updateData: Record<string, unknown> = {
+        updated_at: new Date().toISOString(),
+      }
+      if (input.rating !== undefined) updateData.rating = input.rating
+      if (input.comment !== undefined) updateData.comment = input.comment
+
+      const { error } = await supabase
+        .from('generated_recipe_reviews')
+        .update(updateData)
+        .eq('id', reviewId)
+        .eq('user_id', user.id)
+
+      if (error) {
+        console.error('Error updating review:', error)
+        return false
+      }
+
+      // Update local state
+      setReviews(prev => prev.map(r => {
+        if (r.id === reviewId) {
+          return {
+            ...r,
+            ...(input.rating !== undefined && { rating: input.rating }),
+            ...(input.comment !== undefined && { comment: input.comment }),
+            date: new Date().toISOString(),
+          }
+        }
+        return r
+      }))
+
+      return true
+    } catch (e) {
+      console.error('Error updating review:', e)
+      return false
     }
-
-    setReviews(updatedReviews)
-    saveReviewsToStorage(updatedReviews)
-
-    return true
-  }, [user, reviews])
+  }, [user, reviews, supabase])
 
   // Delete a review
   const deleteReview = useCallback(async (reviewId: string): Promise<boolean> => {
@@ -142,16 +209,37 @@ export function ReviewsProvider({ children }: { children: ReactNode }) {
     const review = reviews.find(r => r.id === reviewId)
     if (!review || review.userId !== user.id) return false
 
-    const updatedReviews = reviews.filter(r => r.id !== reviewId)
-    setReviews(updatedReviews)
-    saveReviewsToStorage(updatedReviews)
+    try {
+      const { error } = await supabase
+        .from('generated_recipe_reviews')
+        .delete()
+        .eq('id', reviewId)
+        .eq('user_id', user.id)
 
-    return true
-  }, [user, reviews])
+      if (error) {
+        console.error('Error deleting review:', error)
+        return false
+      }
+
+      // Remove from local state
+      setReviews(prev => prev.filter(r => r.id !== reviewId))
+      return true
+    } catch (e) {
+      console.error('Error deleting review:', e)
+      return false
+    }
+  }, [user, reviews, supabase])
+
+  // Refresh reviews
+  const refreshReviews = useCallback(async () => {
+    await fetchReviews()
+  }, [fetchReviews])
 
   return (
     <ReviewsContext.Provider
       value={{
+        reviews,
+        loading,
         getReviewsForRecipe,
         getAverageRating,
         getReviewCount,
@@ -160,6 +248,7 @@ export function ReviewsProvider({ children }: { children: ReactNode }) {
         deleteReview,
         hasUserReviewed,
         getUserReview,
+        refreshReviews,
       }}
     >
       {children}
