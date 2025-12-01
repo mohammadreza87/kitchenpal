@@ -111,7 +111,6 @@ export default function HomePage() {
   const { generatedRecipes, getNewRecipes, loading } = useGeneratedRecipes()
   const { savedIds, isSaved, toggleFavorite } = useFavorites()
   const [supabaseRecipes, setSupabaseRecipes] = useState<Recipe[]>([])
-  const [loadingRecipes, setLoadingRecipes] = useState(false)
   const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
@@ -137,14 +136,11 @@ export default function HomePage() {
   useEffect(() => {
     const loadRecipes = async () => {
       try {
-        setLoadingRecipes(true)
         const service = createRecipeService(supabase)
         const recipes = await service.getAllRecipes()
         setSupabaseRecipes(recipes)
       } catch (err) {
         console.error('Failed to load recipes from Supabase:', err)
-      } finally {
-        setLoadingRecipes(false)
       }
     }
     loadRecipes()
@@ -221,11 +217,11 @@ export default function HomePage() {
         imageUrl: r.imageUrl,
         rating: r.rating,
       }))
-  }, [generatedRecipes])
+  }, [baseRecipes])
 
   // Get desserts and sweets
   const dessertRecipes = useMemo(() => {
-    return generatedRecipes
+    return baseRecipes
       .filter(r =>
         r.categories.some(c =>
           c.toLowerCase().includes('dessert') ||
@@ -243,7 +239,7 @@ export default function HomePage() {
         imageUrl: r.imageUrl,
         rating: r.rating,
       }))
-  }, [generatedRecipes])
+  }, [baseRecipes])
 
   return (
     <div ref={containerRef} className="min-h-screen bg-background pb-24">
