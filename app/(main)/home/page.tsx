@@ -105,7 +105,7 @@ export default function HomePage() {
   const router = useRouter()
   const containerRef = useRef<HTMLDivElement>(null)
   const hasAnimated = useRef(false)
-  const { generatedRecipes, getNewRecipes } = useGeneratedRecipes()
+  const { generatedRecipes, getNewRecipes, loading } = useGeneratedRecipes()
   const { savedIds, isSaved, toggleFavorite } = useFavorites()
 
   useEffect(() => {
@@ -289,65 +289,73 @@ export default function HomePage() {
 
       {/* Recipe Sections */}
       <div className="mt-5">
-        <div data-animate>
-          <RecipeSection
-            title="New Recipes"
-            recipes={newRecipes}
-            href="/recipes/new"
-            emptyMessage="Start creating recipes by chatting with our AI chef!"
-            showCreateButton
-            onCreateClick={handleFindRecipes}
-            isSaved={isSaved}
-            onToggleSave={toggleFavorite}
-          />
-        </div>
-
-        {favoriteRecipes.length > 0 && (
-          <div data-animate>
-            <RecipeSection
-              title="Your Favorites"
-              recipes={favoriteRecipes}
-              href="/saved"
-              isSaved={isSaved}
-              onToggleSave={toggleFavorite}
-            />
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
           </div>
-        )}
+        ) : (
+          <>
+            <div data-animate>
+              <RecipeSection
+                title="New Recipes"
+                recipes={newRecipes}
+                href="/recipes/new"
+                emptyMessage="Start creating recipes by chatting with our AI chef!"
+                showCreateButton
+                onCreateClick={handleFindRecipes}
+                isSaved={isSaved}
+                onToggleSave={toggleFavorite}
+              />
+            </div>
 
-        {quickRecipes.length > 0 && (
-          <div data-animate>
-            <RecipeSection
-              title="Quick & Easy"
-              recipes={quickRecipes}
-              href="/recipes/quick"
-              isSaved={isSaved}
-              onToggleSave={toggleFavorite}
-            />
-          </div>
-        )}
+            {favoriteRecipes.length > 0 && (
+              <div data-animate>
+                <RecipeSection
+                  title="Your Favorites"
+                  recipes={favoriteRecipes}
+                  href="/saved"
+                  isSaved={isSaved}
+                  onToggleSave={toggleFavorite}
+                />
+              </div>
+            )}
 
-        {healthyRecipes.length > 0 && (
-          <div data-animate>
-            <RecipeSection
-              title="Healthy Choices"
-              recipes={healthyRecipes}
-              href="/recipes/healthy"
-              isSaved={isSaved}
-              onToggleSave={toggleFavorite}
-            />
-          </div>
-        )}
+            {quickRecipes.length > 0 && (
+              <div data-animate>
+                <RecipeSection
+                  title="Quick & Easy"
+                  recipes={quickRecipes}
+                  href="/recipes/quick"
+                  isSaved={isSaved}
+                  onToggleSave={toggleFavorite}
+                />
+              </div>
+            )}
 
-        {dessertRecipes.length > 0 && (
-          <div data-animate>
-            <RecipeSection
-              title="Sweet Treats"
-              recipes={dessertRecipes}
-              href="/recipes/desserts"
-              isSaved={isSaved}
-              onToggleSave={toggleFavorite}
-            />
-          </div>
+            {healthyRecipes.length > 0 && (
+              <div data-animate>
+                <RecipeSection
+                  title="Healthy Choices"
+                  recipes={healthyRecipes}
+                  href="/recipes/healthy"
+                  isSaved={isSaved}
+                  onToggleSave={toggleFavorite}
+                />
+              </div>
+            )}
+
+            {dessertRecipes.length > 0 && (
+              <div data-animate>
+                <RecipeSection
+                  title="Sweet Treats"
+                  recipes={dessertRecipes}
+                  href="/recipes/desserts"
+                  isSaved={isSaved}
+                  onToggleSave={toggleFavorite}
+                />
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
