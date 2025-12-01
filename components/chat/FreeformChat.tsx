@@ -389,7 +389,7 @@ export function FreeformChat() {
       // Add 'new' and 'generated' markers
       categories.push('new', 'generated')
 
-      addGeneratedRecipe({
+      await addGeneratedRecipe({
         id: generatedRecipe.id,
         title: recipe.name,
         description: recipe.description,
