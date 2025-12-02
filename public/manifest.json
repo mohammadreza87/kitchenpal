@@ -1,0 +1,68 @@
+{
+  "name": "KitchenPal - AI Recipe Generator & Cooking Assistant",
+  "short_name": "KitchenPal",
+  "description": "Transform your ingredients into delicious recipes with AI. Get personalized meal suggestions, generate recipes from photos, and discover cuisines from around the world.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#FF7043",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en-US",
+  "dir": "ltr",
+  "categories": ["food", "lifestyle", "utilities"],
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/apple-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "KitchenPal Homepage"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Generate Recipe",
+      "short_name": "Generate",
+      "description": "Create a new recipe with AI",
+      "url": "/chat",
+      "icons": [{ "src": "/icon.png", "sizes": "512x512" }]
+    },
+    {
+      "name": "Saved Recipes",
+      "short_name": "Saved",
+      "description": "View your saved recipes",
+      "url": "/saved",
+      "icons": [{ "src": "/icon.png", "sizes": "512x512" }]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "handle_links": "preferred",
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  "edge_side_panel": {
+    "preferred_width": 400
+  }
+}

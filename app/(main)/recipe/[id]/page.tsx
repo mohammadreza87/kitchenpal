@@ -7,6 +7,7 @@ import { gsap } from '@/lib/gsap'
 import { useFavorites, useGeneratedRecipes, useReviews } from '@/hooks'
 import { ReviewsTab } from '@/components/recipe/ReviewsTab'
 import { useUser } from '@/hooks/useUser'
+import { RecipeJsonLd } from '@/components/seo/RecipeJsonLd'
 import type { GeneratedRecipeItem } from '@/hooks/useGeneratedRecipes'
 
 // Mock recipe data - comprehensive version of the home page recipes
@@ -504,6 +505,22 @@ export default function RecipePage() {
 
   return (
     <div ref={containerRef} className="min-h-screen bg-background">
+      {/* Recipe JSON-LD Structured Data for SEO */}
+      <RecipeJsonLd
+        name={recipe.name}
+        description={recipe.description}
+        imageUrl={recipe.imageUrl}
+        author={recipe.author}
+        prepTime={recipe.prepTime}
+        cookTime={recipe.cookTime}
+        servings={recipe.servings}
+        calories={recipe.calories}
+        rating={averageRating > 0 ? averageRating : undefined}
+        reviewCount={reviewCount > 0 ? reviewCount : undefined}
+        ingredients={recipe.ingredients}
+        instructions={recipe.instructions}
+      />
+
       {/* Hero Image Section */}
       <div className="relative h-[45vh] w-full">
         {recipe.imageUrl && !imageError && !regeneratingIds.has(id) ? (

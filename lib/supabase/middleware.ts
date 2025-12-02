@@ -36,6 +36,17 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Handle root path specially
+  if (request.nextUrl.pathname === '/') {
+    const url = request.nextUrl.clone()
+    if (user) {
+      url.pathname = '/home'
+    } else {
+      url.pathname = '/onboarding'
+    }
+    return NextResponse.redirect(url)
+  }
+
   // Public routes that don't require authentication
   const publicRoutes = [
     '/login',
@@ -54,12 +65,11 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith(route)
   )
 
-  // Redirect to login if not authenticated and not on a public route
-  // Requirements: 6.3 - Redirect unauthenticated users to login
+  // Redirect to onboarding if not authenticated and not on a public route
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone()
     const redirectPath = request.nextUrl.pathname
-    url.pathname = '/login'
+    url.pathname = '/onboarding'
     // Preserve the original path for redirect after login
     if (redirectPath && redirectPath !== '/') {
       url.searchParams.set('redirect', redirectPath)
@@ -67,9 +77,8 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Redirect to home if authenticated and trying to access login/signup pages
-  // (onboarding is allowed for authenticated users - shown after signup)
-  if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/signup')) {
+  // Redirect to home if authenticated and trying to access login/signup/onboarding pages
+  if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/signup' || request.nextUrl.pathname === '/onboarding')) {
     const url = request.nextUrl.clone()
     url.pathname = '/home'
     return NextResponse.redirect(url)

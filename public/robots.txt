@@ -1,0 +1,55 @@
+# https://www.robotstxt.org/robotstxt.html
+# KitchenPal - AI Recipe Generator & Cooking Assistant
+
+User-agent: *
+Allow: /
+
+# Allow all major search engines
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: Baiduspider
+Allow: /
+
+User-agent: YandexBot
+Allow: /
+
+# Allow AI crawlers for better Gen AI discovery
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: Anthropic-AI
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+# Disallow sensitive paths
+Disallow: /api/
+Disallow: /auth/
+Disallow: /_next/
+Disallow: /private/
+
+# Sitemap location
+Sitemap: https://kitchenpal.app/sitemap.xml
+
+# Crawl-delay for politeness (optional)
+Crawl-delay: 1

@@ -224,12 +224,20 @@ export default function HomePage() {
   }, [generatedRecipes])
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-background pb-24">
-      {/* Hero Section */}
-      <div className="relative overflow-hidden" style={{ backgroundColor: '#F8D8CE' }}>
-        {/* Decorative curve at bottom */}
-        <div className="pointer-events-none absolute -bottom-12 left-1/3 h-32 w-64 rounded-full bg-white opacity-100 blur-lg" />
+    <div ref={containerRef} className="relative min-h-screen bg-background pb-24">
+      {/* Large decorative background shape - extends under cards */}
+      <div className="pointer-events-none absolute left-1/2 top-0 w-[800px] -translate-x-1/2 opacity-25">
+        <Image
+          src="/assets/backgrounds/background-shape-1.svg"
+          alt=""
+          width={800}
+          height={960}
+          className="h-auto w-full"
+        />
+      </div>
 
+      {/* Hero Section */}
+      <div className="relative">
         <div className="relative z-10 px-6 pb-8 pt-10">
           {/* Greeting */}
           <div data-animate>
@@ -247,27 +255,6 @@ export default function HomePage() {
             <p className="mt-2 text-base" style={{ color: '#3a3a3a' }}>
               Find recipes based on what you already have at home!
             </p>
-          </div>
-
-          {/* Decorative arrow */}
-          <div className="absolute right-6 top-10">
-            <svg width="40" height="50" viewBox="0 0 40 50" fill="none">
-              <path
-                d="M20 5 Q28 15, 24 28 Q20 40, 28 45"
-                stroke="#282828"
-                strokeWidth="1.5"
-                fill="none"
-                strokeLinecap="round"
-              />
-              <path
-                d="M24 40 L28 45 L32 39"
-                stroke="#282828"
-                strokeWidth="1.5"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
           </div>
 
           {/* Find Recipes Button */}
