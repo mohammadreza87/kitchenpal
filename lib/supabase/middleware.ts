@@ -42,7 +42,7 @@ export async function updateSession(request: NextRequest) {
     if (user) {
       url.pathname = '/home'
     } else {
-      url.pathname = '/onboarding'
+      url.pathname = '/landingpage'
     }
     return NextResponse.redirect(url)
   }
@@ -54,6 +54,7 @@ export async function updateSession(request: NextRequest) {
     '/forgot-password',
     '/reset-password',
     '/onboarding',
+    '/landingpage',
     '/preferences',
     '/cuisine',
     '/allergies',
@@ -65,11 +66,11 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith(route)
   )
 
-  // Redirect to onboarding if not authenticated and not on a public route
+  // Redirect to landing page if not authenticated and not on a public route
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone()
     const redirectPath = request.nextUrl.pathname
-    url.pathname = '/onboarding'
+    url.pathname = '/landingpage'
     // Preserve the original path for redirect after login
     if (redirectPath && redirectPath !== '/') {
       url.searchParams.set('redirect', redirectPath)
@@ -77,8 +78,8 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Redirect to home if authenticated and trying to access login/signup/onboarding pages
-  if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/signup' || request.nextUrl.pathname === '/onboarding')) {
+  // Redirect to home if authenticated and trying to access login/signup/onboarding/landing pages
+  if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/signup' || request.nextUrl.pathname === '/onboarding' || request.nextUrl.pathname === '/landingpage')) {
     const url = request.nextUrl.clone()
     url.pathname = '/home'
     return NextResponse.redirect(url)

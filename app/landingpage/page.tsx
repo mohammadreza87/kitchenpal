@@ -207,7 +207,7 @@ export default function LandingPage() {
               Sign In
             </button>
             <button
-              onClick={() => router.push('/signup')}
+              onClick={() => router.push('/onboarding')}
               className="px-5 py-2.5 text-sm font-medium text-white bg-brand-primary rounded-full hover:bg-brand-primary-dark transition-all hover:shadow-lg hover:shadow-orange-200 active:scale-95"
             >
               Get Started
@@ -255,7 +255,7 @@ export default function LandingPage() {
             {/* CTA Buttons */}
             <div className="hero-cta flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
               <button
-                onClick={() => router.push('/signup')}
+                onClick={() => router.push('/onboarding')}
                 className="w-full sm:w-auto px-8 py-4 text-lg font-semibold text-white bg-brand-primary rounded-full hover:bg-brand-primary-dark transition-all hover:shadow-xl hover:shadow-orange-200 active:scale-95"
               >
                 Start Cooking Free
@@ -589,7 +589,7 @@ export default function LandingPage() {
                 Join thousands of home cooks using AI to discover new recipes every day. Free to start, no credit card required.
               </p>
               <button
-                onClick={() => router.push('/signup')}
+                onClick={() => router.push('/onboarding')}
                 className="px-10 py-5 text-lg font-bold bg-white text-orange-500 rounded-full hover:shadow-2xl transition-all hover:scale-105 active:scale-95"
               >
                 Get Started for Free
