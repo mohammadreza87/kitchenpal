@@ -120,12 +120,12 @@ export default function SignupPage() {
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden bg-background">
-      {/* Background Shape - positioned at bottom, pushed down */}
-      <div className="pointer-events-none fixed inset-x-0 z-0 flex items-end justify-center" style={{ bottom: '-50%' }}>
+      {/* Background Shape - half goes out from bottom */}
+      <div className="pointer-events-none fixed bottom-0 left-1/2 z-0 w-full max-w-[768px] -translate-x-1/2 translate-y-1/2 opacity-25">
         <img
-          src="/assets/backgrounds/background-shape-3.svg"
+          src="/assets/backgrounds/background-shape-1.svg"
           alt=""
-          className="h-auto w-full opacity-40 md:w-3/4 lg:w-1/2"
+          className="h-auto w-full"
         />
       </div>
 

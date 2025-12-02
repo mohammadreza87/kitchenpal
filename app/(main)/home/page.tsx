@@ -89,13 +89,14 @@ function RecipeSection({
 
       <div className="pl-6">
         <div className="flex gap-3 overflow-x-auto pr-6 pb-2 scrollbar-hide">
-          {recipes.map((recipe) => (
+          {recipes.map((recipe, index) => (
             <RecipeCard
               key={recipe.id}
               {...recipe}
               isSaved={isSaved(recipe.id)}
               onToggleSave={onToggleSave}
               onRetryImage={onRetryImage}
+              index={index}
             />
           ))}
         </div>
@@ -224,14 +225,14 @@ export default function HomePage() {
   }, [generatedRecipes])
 
   return (
-    <div ref={containerRef} className="relative min-h-screen bg-background pb-24">
-      {/* Large decorative background shape - extends under cards */}
-      <div className="pointer-events-none absolute left-1/2 top-0 w-[800px] -translate-x-1/2 opacity-25">
+    <div ref={containerRef} className="relative min-h-screen bg-background pb-24 overflow-hidden">
+      {/* Large decorative background shape - half goes out from top */}
+      <div className="pointer-events-none fixed left-1/2 top-0 z-0 w-full max-w-[768px] -translate-x-1/2 -translate-y-[60%] opacity-25">
         <Image
           src="/assets/backgrounds/background-shape-1.svg"
           alt=""
-          width={800}
-          height={960}
+          width={768}
+          height={920}
           className="h-auto w-full"
         />
       </div>

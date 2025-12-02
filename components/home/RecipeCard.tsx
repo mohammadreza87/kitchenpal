@@ -15,6 +15,7 @@ interface RecipeCardProps {
   isSaved?: boolean
   onToggleSave?: (id: string) => void
   onRetryImage?: (id: string) => void
+  index?: number
 }
 
 export function RecipeCard({
@@ -24,10 +25,21 @@ export function RecipeCard({
   imageUrl,
   isSaved = false,
   onToggleSave,
-  onRetryImage
+  onRetryImage,
+  index = 0
 }: RecipeCardProps) {
   const [imageError, setImageError] = useState(false)
+  const [isVisible, setIsVisible] = useState(false)
   const { regeneratingIds } = useGeneratedRecipes()
+
+  // Staggered animation on mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsVisible(true)
+    }, index * 80) // 80ms stagger between each card
+
+    return () => clearTimeout(timer)
+  }, [index])
 
   // Check if this recipe is currently regenerating
   const isRegenerating = regeneratingIds.has(id)
@@ -55,7 +67,14 @@ export function RecipeCard({
   const hasValidImage = imageUrl && !imageError && !isRegenerating
 
   return (
-    <Link href={`/recipe/${id}`} className="block flex-shrink-0 w-44">
+    <Link
+      href={`/recipe/${id}`}
+      className={`block flex-shrink-0 w-44 transition-all duration-500 ease-out ${
+        isVisible
+          ? 'opacity-100 translate-y-0'
+          : 'opacity-0 translate-y-6'
+      }`}
+    >
       <div className="overflow-hidden rounded-2xl bg-white shadow-sm transition-all duration-200 transform hover:-translate-y-2 hover:shadow-md active:-translate-y-1 active:shadow-md">
         {/* Image */}
         <div className="relative h-32 w-full bg-gradient-to-br from-amber-50 to-orange-50">
