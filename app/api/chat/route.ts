@@ -136,10 +136,27 @@ export async function POST(request: NextRequest): Promise<NextResponse<ChatRespo
   } catch (error) {
     // Handle Gemini service errors
     if (error instanceof GeminiServiceError) {
+      // Check if it's a rate limit error
+      if (error.type === 'RATE_LIMITED') {
+        return NextResponse.json(
+          { content: '', error: 'The AI is busy right now. Please wait 10 seconds and try again.' },
+          { status: 429 }
+        )
+      }
       // Return user-friendly error message
       return NextResponse.json(
         { content: '', error: error.userMessage },
-        { status: error.type === 'RATE_LIMITED' ? 429 : 500 }
+        { status: 500 }
+      )
+    }
+
+    // Check for rate limit in error message (from API)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    if (errorMessage.includes('429') || errorMessage.toLowerCase().includes('rate') || errorMessage.toLowerCase().includes('quota')) {
+      console.error('Chat API rate limited:', errorMessage)
+      return NextResponse.json(
+        { content: '', error: 'The AI is busy right now. Please wait 10 seconds and try again.' },
+        { status: 429 }
       )
     }
 
