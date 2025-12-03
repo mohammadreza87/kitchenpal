@@ -183,6 +183,18 @@ const FOOD_KEYWORDS: Record<string, string[]> = {
 }
 
 /**
+ * Clean up recipe name for URL-safe search terms
+ * Removes parentheses, special characters, and simplifies the name
+ */
+function cleanSearchTerms(name: string): string {
+  return name
+    .replace(/\([^)]*\)/g, '') // Remove content in parentheses
+    .replace(/[^\w\s]/g, ' ')  // Replace special chars with space
+    .replace(/\s+/g, ' ')       // Collapse multiple spaces
+    .trim()
+}
+
+/**
  * Get search terms for a recipe name
  */
 function getSearchTerms(recipeName: string): string {
@@ -194,8 +206,9 @@ function getSearchTerms(recipeName: string): string {
     }
   }
 
-  // Use the recipe name itself with "food" appended
-  return `${recipeName} food dish`
+  // Clean up the recipe name and use with "food" appended
+  const cleanedName = cleanSearchTerms(recipeName)
+  return `${cleanedName} food`
 }
 
 /**
