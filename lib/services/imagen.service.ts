@@ -1,11 +1,9 @@
 /**
- * Google Imagen 3 Service for KitchenPal
- * Generates food images using Google's Imagen 3 model
+ * Image Generation Service for KitchenPal
+ * Uses Unsplash API for high-quality food images
  * Requirements: 2.1 (image generation), 2.3 (base64/URL response)
  */
 
-import { geminiEnv, validateGeminiEnv } from '@/lib/env'
-import { buildImagePrompt } from './prompt-builder'
 import { getImageRateLimiter, type RateLimiter } from './rate-limiter'
 import { getImageCache, type CachedImage } from './cache.service'
 
@@ -13,8 +11,8 @@ import { getImageCache, type CachedImage } from './cache.service'
  * Configuration for Imagen service
  */
 export interface ImagenServiceConfig {
-  apiKey: string
-  model: string
+  apiKey?: string
+  model?: string
   aspectRatio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9'
 }
 
@@ -150,27 +148,70 @@ export function createFallbackImageResponse(): GeneratedImage {
 }
 
 /**
- * Imagen 3 Service class for food image generation
- * Uses Google's Imagen 3 API via REST endpoint
+ * Food-related search terms for better Unsplash results
+ */
+const FOOD_KEYWORDS: Record<string, string[]> = {
+  // Proteins
+  chicken: ['grilled chicken', 'roasted chicken', 'chicken dish'],
+  beef: ['beef steak', 'grilled beef', 'beef dish'],
+  pork: ['pork dish', 'roasted pork'],
+  fish: ['grilled fish', 'seafood dish'],
+  salmon: ['grilled salmon', 'salmon fillet'],
+  shrimp: ['shrimp dish', 'grilled shrimp'],
+  // Cuisines
+  pasta: ['pasta dish', 'italian pasta'],
+  pizza: ['pizza', 'italian pizza'],
+  sushi: ['sushi', 'japanese food'],
+  curry: ['curry dish', 'indian curry'],
+  tacos: ['tacos', 'mexican food'],
+  burger: ['hamburger', 'gourmet burger'],
+  // Meal types
+  salad: ['fresh salad', 'healthy salad'],
+  soup: ['soup bowl', 'hot soup'],
+  sandwich: ['sandwich', 'gourmet sandwich'],
+  // Desserts
+  cake: ['cake dessert', 'birthday cake'],
+  chocolate: ['chocolate dessert', 'chocolate cake'],
+  pie: ['pie dessert', 'fruit pie'],
+  ice: ['ice cream', 'gelato'],
+  // Breakfast
+  pancake: ['pancakes', 'breakfast pancakes'],
+  waffle: ['waffles', 'breakfast waffles'],
+  egg: ['eggs dish', 'breakfast eggs'],
+  // Default
+  default: ['gourmet food', 'delicious meal', 'food photography'],
+}
+
+/**
+ * Get search terms for a recipe name
+ */
+function getSearchTerms(recipeName: string): string {
+  const lowerName = recipeName.toLowerCase()
+
+  for (const [keyword, terms] of Object.entries(FOOD_KEYWORDS)) {
+    if (lowerName.includes(keyword)) {
+      return terms[Math.floor(Math.random() * terms.length)]
+    }
+  }
+
+  // Use the recipe name itself with "food" appended
+  return `${recipeName} food dish`
+}
+
+/**
+ * Image Service class for food image generation
+ * Uses Unsplash for high-quality food images
  */
 export class ImagenService {
-  private config: ImagenServiceConfig
   private rateLimiter: RateLimiter
 
-  constructor(config?: Partial<ImagenServiceConfig>) {
-    validateGeminiEnv()
-
-    this.config = {
-      apiKey: config?.apiKey || geminiEnv.GEMINI_API_KEY,
-      model: config?.model || 'imagen-3.0-generate-002',
-      aspectRatio: config?.aspectRatio || '1:1',
-    }
-
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  constructor(_config?: Partial<ImagenServiceConfig>) {
     this.rateLimiter = getImageRateLimiter()
   }
 
   /**
-   * Generates a food image for a recipe using Imagen 3 REST API
+   * Gets a food image for a recipe using Unsplash
    */
   async generateFoodImage(
     recipeName: string,
@@ -184,23 +225,30 @@ export class ImagenService {
     }
 
     try {
-      // Build the image prompt optimized for food photography
-      const prompt = buildImagePrompt(recipeName, description)
+      // Get relevant search terms
+      const searchTerms = getSearchTerms(recipeName)
 
-      // Use Imagen 3 REST API
-      const response = await this.rateLimiter.execute(() =>
-        this.callImagenAPI(prompt)
-      )
+      // Use Unsplash Source API for random food images
+      // This API doesn't require authentication for basic usage
+      const imageUrl = `https://source.unsplash.com/800x600/?${encodeURIComponent(searchTerms)}`
 
-      if (response.base64Data) {
-        // Cache the result
-        cache.set(recipeName, response as CachedImage, description)
-        return response
+      // Fetch the image to get the final URL (Unsplash redirects)
+      const response = await this.rateLimiter.execute(async () => {
+        const res = await fetch(imageUrl, { method: 'HEAD' })
+        return res.url // Get the final redirected URL
+      })
+
+      const result: GeneratedImage = {
+        base64Data: '',
+        mimeType: 'image/jpeg',
+        url: response,
       }
 
-      return createFallbackImageResponse()
+      // Cache the result
+      cache.set(recipeName, result as CachedImage, description)
+      return result
     } catch (error) {
-      console.error('Imagen generation failed:', error)
+      console.error('Image fetch failed:', error)
 
       // Try to return cached response if available
       const fallbackCached = cache.get(recipeName, description)
@@ -213,53 +261,12 @@ export class ImagenService {
   }
 
   /**
-   * Calls the Imagen 3 API directly via REST
-   */
-  private async callImagenAPI(prompt: string): Promise<GeneratedImage> {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.config.model}:generateImages?key=${this.config.apiKey}`
-
-    const requestBody = {
-      prompt: prompt,
-      config: {
-        numberOfImages: 1,
-        aspectRatio: this.config.aspectRatio,
-      },
-    }
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`Imagen API error: ${response.status} ${errorText}`)
-    }
-
-    const data = await response.json()
-
-    // Extract base64 image from response
-    const generatedImage = data.generatedImages?.[0]
-    if (!generatedImage?.image?.imageBytes) {
-      throw new Error('No image data in response')
-    }
-
-    return {
-      base64Data: generatedImage.image.imageBytes,
-      mimeType: 'image/png',
-    }
-  }
-
-  /**
-   * Gets the current configuration (without exposing API key)
+   * Gets the current configuration
    */
   getConfig(): Omit<ImagenServiceConfig, 'apiKey'> {
     return {
-      model: this.config.model,
-      aspectRatio: this.config.aspectRatio,
+      model: 'unsplash',
+      aspectRatio: '4:3',
     }
   }
 }
