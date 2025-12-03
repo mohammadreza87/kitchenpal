@@ -2,11 +2,11 @@
  * Chat API Route
  * POST /api/chat - Handle chat messages and return AI responses
  * Requirements: 1.1 (AI response), 1.4 (structured recipe data)
+ * Uses Google Gemini for all text generation
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createDeepseekService } from '@/lib/services/deepseek.service'
-import { GeminiServiceError } from '@/lib/services/gemini.service'
+import { createGeminiService, GeminiServiceError } from '@/lib/services/gemini.service'
 import type { ChatMessage, QuickReply, RecipeOption } from '@/types/chat'
 import type { UserPreferences } from '@/lib/services/prompt-builder'
 
@@ -108,17 +108,17 @@ export async function POST(request: NextRequest): Promise<NextResponse<ChatRespo
 
     const { message, conversationHistory, userPreferences } = validation.data
 
-    // Create DeepSeek service and generate response
-    let llmService
+    // Create Gemini service and generate response
+    let geminiService
     try {
-      llmService = createDeepseekService()
+      geminiService = createGeminiService()
     } catch {
       return NextResponse.json(
-        { content: '', error: 'AI service not configured. Please add DEEPSEEK_API_KEY.' },
+        { content: '', error: 'AI service not configured. Please add GEMINI_API_KEY.' },
         { status: 500 }
       )
     }
-    const aiResponse = await llmService.generateResponse(
+    const aiResponse = await geminiService.generateResponse(
       message,
       conversationHistory || [],
       userPreferences

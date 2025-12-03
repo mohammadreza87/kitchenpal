@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { useUser } from '@/hooks/useUser'
 import { useFavorites, useReviews } from '@/hooks'
 import { ReviewsTab } from '@/components/recipe/ReviewsTab'
+import { InstructionsTab } from '@/components/recipe/InstructionsTab'
 
 interface GeneratedRecipe {
   id: string
@@ -381,16 +382,15 @@ export default function GeneratedRecipePage() {
           )}
 
           {activeTab === 'instructions' && (
-            <div className="space-y-6">
-              {recipe.instructions.map((instruction, index) => (
-                <div key={index} className="flex gap-4">
-                  <div className="flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-full bg-brand-primary text-white text-sm font-medium">
-                    {index + 1}
-                  </div>
-                  <p className="flex-1 text-[#363636] pt-1 leading-relaxed">{instruction}</p>
-                </div>
-              ))}
-            </div>
+            <InstructionsTab
+              instructions={recipe.instructions.map((text, index) => ({
+                id: `step-${index + 1}`,
+                step: index + 1,
+                text,
+              }))}
+              recipeName={recipe.name}
+              className="-mx-5 -my-4"
+            />
           )}
 
           {activeTab === 'review' && (

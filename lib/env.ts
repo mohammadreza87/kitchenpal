@@ -37,41 +37,19 @@ export const geminiEnv = {
 } as const
 
 /**
- * DeepSeek configuration
+ * ElevenLabs configuration for voice coaching
  */
-export const deepseekEnv = {
-  get DEEPSEEK_API_KEY(): string {
-    return process.env.DEEPSEEK_API_KEY ?? ''
+export const elevenlabsEnv = {
+  get ELEVENLABS_API_KEY(): string {
+    return process.env.ELEVENLABS_API_KEY ?? ''
   },
-  get DEEPSEEK_MODEL(): string {
-    return process.env.DEEPSEEK_MODEL ?? 'deepseek-chat'
+  get ELEVENLABS_VOICE_ID(): string {
+    // Default to "Rachel" voice - a warm, friendly female voice good for coaching
+    return process.env.ELEVENLABS_VOICE_ID ?? 'EXAVITQu4vr4xnSDxMaL'
   },
-  get DEEPSEEK_BASE_URL(): string {
-    return process.env.DEEPSEEK_BASE_URL ?? 'https://api.deepseek.com'
-  },
-  get DEEPSEEK_MAX_TOKENS(): number {
-    return parseInt(process.env.DEEPSEEK_MAX_TOKENS ?? '2048', 10)
-  },
-  get DEEPSEEK_TEMPERATURE(): number {
-    return parseFloat(process.env.DEEPSEEK_TEMPERATURE ?? '0.7')
-  },
-} as const
-
-/**
- * Leonardo configuration
- */
-export const leonardoEnv = {
-  get LEONARDO_API_KEY(): string {
-    return process.env.LEONARDO_API_KEY ?? ''
-  },
-  get LEONARDO_MODEL_ID(): string {
-    return process.env.LEONARDO_MODEL_ID ?? ''
-  },
-  get LEONARDO_BASE_URL(): string {
-    return process.env.LEONARDO_BASE_URL ?? 'https://cloud.leonardo.ai/api/rest/v1'
-  },
-  get LEONARDO_IMAGE_SIZE(): string {
-    return process.env.LEONARDO_IMAGE_SIZE ?? '768x768'
+  get ELEVENLABS_MODEL_ID(): string {
+    // eleven_multilingual_v2 for highest quality
+    return process.env.ELEVENLABS_MODEL_ID ?? 'eleven_multilingual_v2'
   },
 } as const
 
@@ -115,32 +93,16 @@ export function validateGeminiEnv(): void {
 }
 
 /**
- * Validate DeepSeek environment variables
+ * Validate ElevenLabs environment variables
  */
-export function validateDeepseekEnv(): void {
-  const requiredVars = ['DEEPSEEK_API_KEY']
+export function validateElevenlabsEnv(): void {
+  const requiredVars = ['ELEVENLABS_API_KEY']
 
   const missing = requiredVars.filter((name) => !process.env[name])
 
   if (missing.length > 0) {
     throw new Error(
-      `Missing required DeepSeek environment variables:\n${missing.map(n => `  - ${n}`).join('\n')}\n` +
-      `Please add them to your .env.local file.`
-    )
-  }
-}
-
-/**
- * Validate Leonardo environment variables
- */
-export function validateLeonardoEnv(): void {
-  const requiredVars = ['LEONARDO_API_KEY']
-
-  const missing = requiredVars.filter((name) => !process.env[name])
-
-  if (missing.length > 0) {
-    throw new Error(
-      `Missing required Leonardo environment variables:\n${missing.map(n => `  - ${n}`).join('\n')}\n` +
+      `Missing required ElevenLabs environment variables:\n${missing.map(n => `  - ${n}`).join('\n')}\n` +
       `Please add them to your .env.local file.`
     )
   }

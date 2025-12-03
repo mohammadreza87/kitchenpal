@@ -9,7 +9,7 @@ import { geminiEnv, validateGeminiEnv } from '@/lib/env'
 import { buildImagePrompt } from './prompt-builder'
 import { getImageRateLimiter, type RateLimiter } from './rate-limiter'
 import { getImageCache, type CachedImage } from './cache.service'
-import { createLeonardoService } from './leonardo.service'
+import { createImagenService } from './imagen.service'
 
 /**
  * Configuration for Image service
@@ -374,12 +374,16 @@ export class ImageService {
   }
 }
 
-class LeonardoImageAdapter {
-  constructor(private leonardo = createLeonardoService()) {}
+/**
+ * Imagen 3 adapter that wraps the ImagenService
+ * Provides the same interface as ImageService
+ */
+class ImagenAdapter {
+  constructor(private imagen = createImagenService()) {}
 
   async generateFoodImage(recipeName: string, description?: string): Promise<GeneratedImage> {
     try {
-      return await this.leonardo.generateImage(recipeName, description)
+      return await this.imagen.generateFoodImage(recipeName, description)
     } catch (error) {
       throw createImageError(error)
     }
@@ -387,20 +391,18 @@ class LeonardoImageAdapter {
 
   getConfig(): Omit<ImageServiceConfig, 'apiKey'> {
     return {
-      model: 'leonardo',
+      model: 'imagen-3.0-generate-002',
     }
   }
 }
 
 /**
  * Factory function for creating ImageService instance
+ * Now defaults to Imagen 3 for image generation
  */
-export function createImageService(config?: Partial<ImageServiceConfig>): ImageService {
-  if (process.env.LEONARDO_API_KEY) {
-    // Structural typing satisfies ImageService shape
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return new LeonardoImageAdapter() as any as ImageService
-  }
-
-  return new ImageService(config)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function createImageService(_config?: Partial<ImageServiceConfig>): ImageService {
+  // Use Imagen 3 by default for all image generation
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return new ImagenAdapter() as any as ImageService
 }

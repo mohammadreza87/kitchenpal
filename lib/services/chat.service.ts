@@ -13,28 +13,30 @@ import type {
 import { chatMessageFromRow, conversationFromRow } from '@/types/chat'
 import {
   GeminiServiceError,
+  GeminiService,
+  createGeminiService,
   type AIResponse,
 } from './gemini.service'
-import { createDeepseekService, DeepseekService } from './deepseek.service'
 import type { UserPreferences } from './prompt-builder'
 
 /**
  * Chat Service for message operations
  * Requirements: 1.1 (message sending), 1.2 (AI response), 6.2 (message persistence)
+ * Uses Google Gemini for all AI responses
  */
 export class ChatService {
   private supabase: SupabaseClient<Database>
-  private deepseekService: DeepseekService | null = null
+  private geminiService: GeminiService | null = null
 
   constructor(supabase: SupabaseClient<Database>) {
     this.supabase = supabase
-    // Initialize Deepseek service on the server; client will use API route
+    // Initialize Gemini service on the server; client will use API route
     if (typeof window === 'undefined') {
       try {
-        this.deepseekService = createDeepseekService()
+        this.geminiService = createGeminiService()
       } catch {
         // Service will be null if API key is missing
-        console.warn('DeepSeek service not initialized - using fallback responses')
+        console.warn('Gemini service not initialized - using fallback responses')
       }
     }
   }
@@ -216,7 +218,7 @@ export class ChatService {
 
 
   /**
-   * Gets AI response using DeepSeek (server) or API route fallback
+   * Gets AI response using Gemini (server) or API route fallback
    * Requirements: 1.1 - Send message to AI backend
    * Requirements: 1.2 - Include user preferences in prompt
    * Requirements: 1.4 - Return structured recipe data
@@ -233,8 +235,8 @@ export class ChatService {
     // Always load history for context and for API fallback
     const conversationHistory = await this.getConversationMessages(conversationId)
 
-    // If DeepSeek service is not available on the client, try the server API route before falling back
-    if (!this.deepseekService) {
+    // If Gemini service is not available on the client, try the server API route before falling back
+    if (!this.geminiService) {
       try {
         const response = await fetch('/api/chat', {
           method: 'POST',
@@ -274,8 +276,8 @@ export class ChatService {
           }
         : undefined
 
-      // Call DeepSeek API with conversation history and preferences
-      const aiResponse: AIResponse = await this.deepseekService.generateResponse(
+      // Call Gemini API with conversation history and preferences
+      const aiResponse: AIResponse = await this.geminiService.generateResponse(
         userMessage,
         conversationHistory,
         preferences
@@ -286,7 +288,7 @@ export class ChatService {
     } catch (error) {
       // Handle service errors gracefully
       if (error instanceof GeminiServiceError) {
-        console.error('LLM API error:', error.type, error.userMessage)
+        console.error('Gemini API error:', error.type, error.userMessage)
         // Return user-friendly error message
         return {
           content: error.userMessage,

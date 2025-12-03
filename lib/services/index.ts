@@ -43,10 +43,37 @@ export type {
   GeneratedImage,
   ImageErrorType,
 } from './image.service'
-export { DeepseekService, createDeepseekService } from './deepseek.service'
-export type { DeepseekServiceConfig } from './deepseek.service'
-export { LeonardoService, createLeonardoService } from './leonardo.service'
-export type { LeonardoServiceConfig } from './leonardo.service'
+// ElevenLabs voice coaching exports
+export {
+  ElevenLabsService,
+  createElevenLabsService,
+  ElevenLabsServiceError,
+  classifyElevenLabsError,
+  createElevenLabsError,
+} from './elevenlabs.service'
+export type {
+  ElevenLabsServiceConfig,
+  VoiceSettings,
+  OutputFormat,
+  GeneratedAudio,
+  ElevenLabsErrorType,
+} from './elevenlabs.service'
+// Imagen service exports
+export {
+  ImagenService,
+  createImagenService,
+  ImagenServiceError,
+  classifyImagenError,
+  createImagenError,
+  getImagenErrorMessage,
+  createFallbackImageResponse as createImagenFallbackResponse,
+  FALLBACK_PLACEHOLDER_IMAGE as IMAGEN_FALLBACK_PLACEHOLDER,
+} from './imagen.service'
+export type {
+  ImagenServiceConfig,
+  GeneratedImage as ImagenGeneratedImage,
+  ImagenErrorType,
+} from './imagen.service'
 // Rate limiter exports
 export {
   RateLimiter,
