@@ -367,7 +367,7 @@ export default function RecipePage() {
   const router = useRouter()
   const { user } = useUser()
   const { isSaved, toggleFavorite } = useFavorites()
-  const { generatedRecipes, regenerateImage, regeneratingIds, removeGeneratedRecipe } = useGeneratedRecipes()
+  const { generatedRecipes, regenerateImage, regeneratingIds, removeGeneratedRecipe, loading: recipesLoading } = useGeneratedRecipes()
   const { getAverageRating, getReviewCount } = useReviews()
   const containerRef = useRef<HTMLDivElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
@@ -460,7 +460,8 @@ export default function RecipePage() {
     return `${totalMinutes} min`
   }
 
-  if (loading) {
+  // Show loading while either local state or recipes from hook are loading
+  if (loading || recipesLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
