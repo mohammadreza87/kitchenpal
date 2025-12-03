@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { GoogleGenAI } from '@google/genai'
 
 type VisionRequest = {
   imageBase64: string
@@ -23,7 +23,9 @@ type VisionResponse = {
 
 export async function POST(req: NextRequest): Promise<NextResponse<VisionResponse>> {
   try {
-    if (!process.env.GEMINI_API_KEY) {
+    const apiKey = process.env.GEMINI_API_KEY
+    if (!apiKey) {
+      console.error('[Vision API] Missing GEMINI_API_KEY')
       return NextResponse.json({ error: 'Missing GEMINI_API_KEY' }, { status: 500 })
     }
 
@@ -33,8 +35,10 @@ export async function POST(req: NextRequest): Promise<NextResponse<VisionRespons
     }
 
     const mode = body.mode || 'dish'
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+    console.log('[Vision API] Analyzing image in mode:', mode)
+
+    // Initialize the Google GenAI client
+    const client = new GoogleGenAI({ apiKey })
 
     // Different prompts based on mode
     let prompt: string
@@ -73,18 +77,54 @@ Respond ONLY as JSON with this exact format:
         ? 'Identify all the ingredients in this fridge/kitchen image:'
         : 'Identify this food and describe it:'
 
-    const response = await model.generateContent([
-      prompt,
-      userMessage,
-      {
-        inlineData: {
-          mimeType: 'image/jpeg',
-          data: body.imageBase64,
+    // Use Gemini 1.5 Flash for vision tasks
+    const response = await client.models.generateContent({
+      model: 'gemini-1.5-flash',
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            { text: prompt },
+            { text: userMessage },
+            {
+              inlineData: {
+                mimeType: 'image/jpeg',
+                data: body.imageBase64,
+              },
+            },
+          ],
         },
-      },
-    ])
+      ],
+    })
 
-    let content = response.response.text()
+    // Extract text from response
+    const candidates = response.candidates
+    if (!candidates || candidates.length === 0) {
+      console.error('[Vision API] No candidates in response')
+      return NextResponse.json({ error: 'No response from vision model' }, { status: 500 })
+    }
+
+    const parts = candidates[0].content?.parts
+    if (!parts || parts.length === 0) {
+      console.error('[Vision API] No parts in response')
+      return NextResponse.json({ error: 'Empty response from vision model' }, { status: 500 })
+    }
+
+    // Find text part
+    let content = ''
+    for (const part of parts) {
+      if (part.text) {
+        content = part.text
+        break
+      }
+    }
+
+    if (!content) {
+      console.error('[Vision API] No text content in response')
+      return NextResponse.json({ error: 'No text in vision response' }, { status: 500 })
+    }
+
+    console.log('[Vision API] Raw response:', content.substring(0, 200))
 
     // Strip markdown code block formatting if present
     content = content
@@ -111,9 +151,11 @@ Respond ONLY as JSON with this exact format:
       name = firstLine.trim() || name
     }
 
+    console.log('[Vision API] Parsed result:', { name, ingredientCount: ingredients.length })
     return NextResponse.json({ name, summary, ingredients })
   } catch (error) {
-    console.error('Vision API error:', error)
-    return NextResponse.json({ error: 'Failed to analyze image' }, { status: 500 })
+    console.error('[Vision API] Error:', error)
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    return NextResponse.json({ error: `Failed to analyze image: ${message}` }, { status: 500 })
   }
 }
