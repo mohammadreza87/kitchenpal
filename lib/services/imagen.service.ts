@@ -1,9 +1,11 @@
 /**
  * Image Generation Service for KitchenPal
- * Uses Unsplash API for high-quality food images
+ * Uses Google Imagen 3 via Gemini API for AI-generated food images
  * Requirements: 2.1 (image generation), 2.3 (base64/URL response)
  */
 
+import { GoogleGenAI } from '@google/genai'
+import { geminiEnv } from '../env'
 import { getImageRateLimiter, type RateLimiter } from './rate-limiter'
 import { getImageCache, type CachedImage } from './cache.service'
 
@@ -115,6 +117,9 @@ export function classifyImagenError(error: unknown): ImagenErrorType {
     if (message.includes('safety') || message.includes('blocked') || message.includes('content policy')) {
       return 'GENERATION_FAILED'
     }
+    if (message.includes('api key') || message.includes('authentication') || message.includes('unauthorized')) {
+      return 'API_KEY_MISSING'
+    }
   }
 
   return 'API_ERROR'
@@ -148,83 +153,49 @@ export function createFallbackImageResponse(): GeneratedImage {
 }
 
 /**
- * Food-related search terms for better Unsplash results
+ * Build a detailed prompt for food image generation
  */
-const FOOD_KEYWORDS: Record<string, string[]> = {
-  // Proteins
-  chicken: ['grilled chicken', 'roasted chicken', 'chicken dish'],
-  beef: ['beef steak', 'grilled beef', 'beef dish'],
-  pork: ['pork dish', 'roasted pork'],
-  fish: ['grilled fish', 'seafood dish'],
-  salmon: ['grilled salmon', 'salmon fillet'],
-  shrimp: ['shrimp dish', 'grilled shrimp'],
-  // Cuisines
-  pasta: ['pasta dish', 'italian pasta'],
-  pizza: ['pizza', 'italian pizza'],
-  sushi: ['sushi', 'japanese food'],
-  curry: ['curry dish', 'indian curry'],
-  tacos: ['tacos', 'mexican food'],
-  burger: ['hamburger', 'gourmet burger'],
-  // Meal types
-  salad: ['fresh salad', 'healthy salad'],
-  soup: ['soup bowl', 'hot soup'],
-  sandwich: ['sandwich', 'gourmet sandwich'],
-  // Desserts
-  cake: ['cake dessert', 'birthday cake'],
-  chocolate: ['chocolate dessert', 'chocolate cake'],
-  pie: ['pie dessert', 'fruit pie'],
-  ice: ['ice cream', 'gelato'],
-  // Breakfast
-  pancake: ['pancakes', 'breakfast pancakes'],
-  waffle: ['waffles', 'breakfast waffles'],
-  egg: ['eggs dish', 'breakfast eggs'],
-  // Default
-  default: ['gourmet food', 'delicious meal', 'food photography'],
-}
+function buildFoodImagePrompt(recipeName: string, description?: string): string {
+  const basePrompt = `Professional food photography of ${recipeName}.
+Beautiful plating on a ceramic plate, natural lighting, shallow depth of field,
+appetizing presentation, high-end restaurant quality, warm inviting colors,
+top-down or 45-degree angle shot.`
 
-/**
- * Clean up recipe name for URL-safe search terms
- * Removes parentheses, special characters, and simplifies the name
- */
-function cleanSearchTerms(name: string): string {
-  return name
-    .replace(/\([^)]*\)/g, '') // Remove content in parentheses
-    .replace(/[^\w\s]/g, ' ')  // Replace special chars with space
-    .replace(/\s+/g, ' ')       // Collapse multiple spaces
-    .trim()
-}
-
-/**
- * Get search terms for a recipe name
- */
-function getSearchTerms(recipeName: string): string {
-  const lowerName = recipeName.toLowerCase()
-
-  for (const [keyword, terms] of Object.entries(FOOD_KEYWORDS)) {
-    if (lowerName.includes(keyword)) {
-      return terms[Math.floor(Math.random() * terms.length)]
-    }
+  if (description) {
+    return `${basePrompt} ${description}`
   }
 
-  // Clean up the recipe name and use with "food" appended
-  const cleanedName = cleanSearchTerms(recipeName)
-  return `${cleanedName} food`
+  return basePrompt
 }
 
 /**
  * Image Service class for food image generation
- * Uses Unsplash for high-quality food images
+ * Uses Google Imagen 3 for AI-generated food images
  */
 export class ImagenService {
+  private client: GoogleGenAI
   private rateLimiter: RateLimiter
+  private model: string
+  private aspectRatio: string
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  constructor(_config?: Partial<ImagenServiceConfig>) {
+  constructor(config?: Partial<ImagenServiceConfig>) {
+    const apiKey = config?.apiKey || geminiEnv.GEMINI_API_KEY
+
+    if (!apiKey) {
+      throw new ImagenServiceError(
+        'API_KEY_MISSING',
+        ERROR_MESSAGES.API_KEY_MISSING
+      )
+    }
+
+    this.client = new GoogleGenAI({ apiKey })
     this.rateLimiter = getImageRateLimiter()
+    this.model = config?.model || 'imagen-3.0-generate-002'
+    this.aspectRatio = config?.aspectRatio || '4:3'
   }
 
   /**
-   * Gets a food image for a recipe using Unsplash
+   * Generates a food image for a recipe using Imagen 3
    */
   async generateFoodImage(
     recipeName: string,
@@ -238,30 +209,47 @@ export class ImagenService {
     }
 
     try {
-      // Get relevant search terms
-      const searchTerms = getSearchTerms(recipeName)
+      const prompt = buildFoodImagePrompt(recipeName, description)
 
-      // Use Unsplash Source API for random food images
-      // This API doesn't require authentication for basic usage
-      const imageUrl = `https://source.unsplash.com/800x600/?${encodeURIComponent(searchTerms)}`
-
-      // Fetch the image to get the final URL (Unsplash redirects)
       const response = await this.rateLimiter.execute(async () => {
-        const res = await fetch(imageUrl, { method: 'HEAD' })
-        return res.url // Get the final redirected URL
+        return await this.client.models.generateImages({
+          model: this.model,
+          prompt,
+          config: {
+            numberOfImages: 1,
+            aspectRatio: this.aspectRatio,
+            outputMimeType: 'image/jpeg',
+          },
+        })
       })
 
+      // Extract the generated image
+      if (!response.generatedImages || response.generatedImages.length === 0) {
+        throw new ImagenServiceError(
+          'INVALID_RESPONSE',
+          ERROR_MESSAGES.INVALID_RESPONSE
+        )
+      }
+
+      const generatedImage = response.generatedImages[0]
+
+      if (!generatedImage.image?.imageBytes) {
+        throw new ImagenServiceError(
+          'INVALID_RESPONSE',
+          ERROR_MESSAGES.INVALID_RESPONSE
+        )
+      }
+
       const result: GeneratedImage = {
-        base64Data: '',
+        base64Data: generatedImage.image.imageBytes,
         mimeType: 'image/jpeg',
-        url: response,
       }
 
       // Cache the result
       cache.set(recipeName, result as CachedImage, description)
       return result
     } catch (error) {
-      console.error('Image fetch failed:', error)
+      console.error('Image generation failed:', error)
 
       // Try to return cached response if available
       const fallbackCached = cache.get(recipeName, description)
@@ -269,6 +257,12 @@ export class ImagenService {
         return fallbackCached as GeneratedImage
       }
 
+      // If it's already our error type, rethrow
+      if (error instanceof ImagenServiceError) {
+        throw error
+      }
+
+      // Return fallback for other errors
       return createFallbackImageResponse()
     }
   }
@@ -278,8 +272,8 @@ export class ImagenService {
    */
   getConfig(): Omit<ImagenServiceConfig, 'apiKey'> {
     return {
-      model: 'unsplash',
-      aspectRatio: '4:3',
+      model: this.model,
+      aspectRatio: this.aspectRatio as ImagenServiceConfig['aspectRatio'],
     }
   }
 }
