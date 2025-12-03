@@ -77,9 +77,9 @@ Respond ONLY as JSON with this exact format:
         ? 'Identify all the ingredients in this fridge/kitchen image:'
         : 'Identify this food and describe it:'
 
-    // Use Gemini 1.5 Flash for vision tasks
+    // Use Gemini 2.0 Flash for vision tasks (supports multimodal input)
     const response = await client.models.generateContent({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.0-flash',
       contents: [
         {
           role: 'user',
