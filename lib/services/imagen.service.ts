@@ -1,7 +1,7 @@
 /**
  * Image Generation Service for KitchenPal
- * Uses Google Imagen 3 via Gemini API for AI-generated food images
- * Requirements: 2.1 (image generation), 2.3 (base64/URL response)
+ * Uses Google Gemini for AI-generated food images
+ * Based on: https://ai.google.dev/gemini-api/docs/image-generation
  */
 
 import { GoogleGenAI } from '@google/genai'
@@ -15,7 +15,6 @@ import { getImageCache, type CachedImage } from './cache.service'
 export interface ImagenServiceConfig {
   apiKey?: string
   model?: string
-  aspectRatio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9'
 }
 
 /**
@@ -156,13 +155,13 @@ export function createFallbackImageResponse(): GeneratedImage {
  * Build a detailed prompt for food image generation
  */
 function buildFoodImagePrompt(recipeName: string, description?: string): string {
-  const basePrompt = `Professional food photography of ${recipeName}.
-Beautiful plating on a ceramic plate, natural lighting, shallow depth of field,
-appetizing presentation, high-end restaurant quality, warm inviting colors,
-top-down or 45-degree angle shot.`
+  const basePrompt = `Generate a professional food photography image of ${recipeName}.
+The dish should be beautifully plated on a ceramic plate, with natural lighting, shallow depth of field,
+appetizing presentation, high-end restaurant quality, warm inviting colors, shot from a 45-degree angle.
+No text, no watermarks, photorealistic.`
 
   if (description) {
-    return `${basePrompt} ${description}`
+    return `${basePrompt} Additional details: ${description}`
   }
 
   return basePrompt
@@ -170,13 +169,12 @@ top-down or 45-degree angle shot.`
 
 /**
  * Image Service class for food image generation
- * Uses Google Imagen 3 for AI-generated food images
+ * Uses Google Gemini for AI-generated food images
  */
 export class ImagenService {
   private client: GoogleGenAI
   private rateLimiter: RateLimiter
   private model: string
-  private aspectRatio: string
 
   constructor(config?: Partial<ImagenServiceConfig>) {
     const apiKey = config?.apiKey || geminiEnv.GEMINI_API_KEY
@@ -190,12 +188,12 @@ export class ImagenService {
 
     this.client = new GoogleGenAI({ apiKey })
     this.rateLimiter = getImageRateLimiter()
-    this.model = config?.model || 'imagen-3.0-generate-002'
-    this.aspectRatio = config?.aspectRatio || '4:3'
+    // Use the image generation model from Gemini docs
+    this.model = config?.model || 'gemini-2.0-flash-exp'
   }
 
   /**
-   * Generates a food image for a recipe using Imagen 3
+   * Generates a food image for a recipe using Gemini
    */
   async generateFoodImage(
     recipeName: string,
@@ -212,42 +210,51 @@ export class ImagenService {
       const prompt = buildFoodImagePrompt(recipeName, description)
 
       const response = await this.rateLimiter.execute(async () => {
-        return await this.client.models.generateImages({
+        return await this.client.models.generateContent({
           model: this.model,
-          prompt,
+          contents: prompt,
           config: {
-            numberOfImages: 1,
-            aspectRatio: this.aspectRatio,
-            outputMimeType: 'image/jpeg',
+            responseModalities: ['image', 'text'],
           },
         })
       })
 
-      // Extract the generated image
-      if (!response.generatedImages || response.generatedImages.length === 0) {
+      // Extract the generated image from the response
+      const candidates = response.candidates
+      if (!candidates || candidates.length === 0) {
         throw new ImagenServiceError(
           'INVALID_RESPONSE',
           ERROR_MESSAGES.INVALID_RESPONSE
         )
       }
 
-      const generatedImage = response.generatedImages[0]
-
-      if (!generatedImage.image?.imageBytes) {
+      const parts = candidates[0].content?.parts
+      if (!parts) {
         throw new ImagenServiceError(
           'INVALID_RESPONSE',
           ERROR_MESSAGES.INVALID_RESPONSE
         )
       }
 
-      const result: GeneratedImage = {
-        base64Data: generatedImage.image.imageBytes,
-        mimeType: 'image/jpeg',
+      // Find the image part in the response
+      for (const part of parts) {
+        if (part.inlineData) {
+          const result: GeneratedImage = {
+            base64Data: part.inlineData.data || '',
+            mimeType: (part.inlineData.mimeType as 'image/png' | 'image/jpeg') || 'image/png',
+          }
+
+          // Cache the result
+          cache.set(recipeName, result as CachedImage, description)
+          return result
+        }
       }
 
-      // Cache the result
-      cache.set(recipeName, result as CachedImage, description)
-      return result
+      // No image found in response
+      throw new ImagenServiceError(
+        'INVALID_RESPONSE',
+        ERROR_MESSAGES.INVALID_RESPONSE
+      )
     } catch (error) {
       console.error('Image generation failed:', error)
 
@@ -273,7 +280,6 @@ export class ImagenService {
   getConfig(): Omit<ImagenServiceConfig, 'apiKey'> {
     return {
       model: this.model,
-      aspectRatio: this.aspectRatio as ImagenServiceConfig['aspectRatio'],
     }
   }
 }
