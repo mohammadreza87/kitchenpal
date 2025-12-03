@@ -1,6 +1,6 @@
 /**
  * Image Generation Service for KitchenPal
- * Uses Google Gemini for AI-generated food images
+ * Uses Google Gemini/Imagen for AI-generated food images
  * Based on: https://ai.google.dev/gemini-api/docs/image-generation
  */
 
@@ -152,16 +152,34 @@ export function createFallbackImageResponse(): GeneratedImage {
 }
 
 /**
- * Build a detailed prompt for food image generation
+ * Build a detailed prompt for high-quality food image generation
+ * Optimized for professional food photography results
  */
 function buildFoodImagePrompt(recipeName: string, description?: string): string {
-  const basePrompt = `Generate a professional food photography image of ${recipeName}.
-The dish should be beautifully plated on a ceramic plate, with natural lighting, shallow depth of field,
-appetizing presentation, high-end restaurant quality, warm inviting colors, shot from a 45-degree angle.
-No text, no watermarks, photorealistic.`
+  // Professional food photography prompt optimized for Gemini/Imagen
+  const basePrompt = `Create a stunning, ultra high-quality professional food photography image of ${recipeName}.
+
+Style requirements:
+- Shot by a professional food photographer for a high-end culinary magazine
+- Beautiful artistic plating on elegant dinnerware
+- Soft, natural window lighting with subtle shadows
+- Shallow depth of field with creamy bokeh background
+- Rich, vibrant, appetizing colors that pop
+- 45-degree angle or slight overhead shot
+- Clean, minimalist background (marble, wood, or neutral surface)
+- Garnishes and fresh herbs for visual appeal
+- Steam or moisture to show freshness where appropriate
+
+Technical requirements:
+- Ultra sharp focus on the main dish
+- Professional color grading
+- High dynamic range
+- No text, watermarks, or logos
+- Photorealistic quality
+- 4K resolution quality`
 
   if (description) {
-    return `${basePrompt} Additional details: ${description}`
+    return `${basePrompt}\n\nAdditional context: ${description}`
   }
 
   return basePrompt
@@ -169,7 +187,7 @@ No text, no watermarks, photorealistic.`
 
 /**
  * Image Service class for food image generation
- * Uses Google Gemini for AI-generated food images
+ * Uses Google Imagen 3 for high-quality AI-generated food images
  */
 export class ImagenService {
   private client: GoogleGenAI
@@ -188,12 +206,13 @@ export class ImagenService {
 
     this.client = new GoogleGenAI({ apiKey })
     this.rateLimiter = getImageRateLimiter()
-    // Use the image generation model from Gemini docs
-    this.model = config?.model || 'gemini-2.0-flash-exp'
+    // Use Imagen 3 for highest quality image generation
+    // Alternative: 'gemini-2.0-flash-exp' for faster but lower quality
+    this.model = config?.model || 'imagen-3.0-generate-002'
   }
 
   /**
-   * Generates a food image for a recipe using Gemini
+   * Generates a food image for a recipe using Imagen 3
    */
   async generateFoodImage(
     recipeName: string,
@@ -209,9 +228,42 @@ export class ImagenService {
     try {
       const prompt = buildFoodImagePrompt(recipeName, description)
 
-      const response = await this.rateLimiter.execute(async () => {
+      // Try Imagen 3 first (dedicated image generation model)
+      try {
+        const response = await this.rateLimiter.execute(async () => {
+          return await this.client.models.generateImages({
+            model: this.model,
+            prompt,
+            config: {
+              numberOfImages: 1,
+              aspectRatio: '4:3',
+              outputMimeType: 'image/jpeg',
+            },
+          })
+        })
+
+        // Extract the generated image
+        if (response.generatedImages && response.generatedImages.length > 0) {
+          const generatedImage = response.generatedImages[0]
+          if (generatedImage.image?.imageBytes) {
+            const result: GeneratedImage = {
+              base64Data: generatedImage.image.imageBytes,
+              mimeType: 'image/jpeg',
+            }
+
+            // Cache the result
+            cache.set(recipeName, result as CachedImage, description)
+            return result
+          }
+        }
+      } catch (imagenError) {
+        console.log('[Imagen] Imagen 3 not available, falling back to Gemini:', imagenError)
+      }
+
+      // Fallback to Gemini 2.0 Flash with image generation
+      const fallbackResponse = await this.rateLimiter.execute(async () => {
         return await this.client.models.generateContent({
-          model: this.model,
+          model: 'gemini-2.0-flash-exp',
           contents: prompt,
           config: {
             responseModalities: ['image', 'text'],
@@ -220,7 +272,7 @@ export class ImagenService {
       })
 
       // Extract the generated image from the response
-      const candidates = response.candidates
+      const candidates = fallbackResponse.candidates
       if (!candidates || candidates.length === 0) {
         throw new ImagenServiceError(
           'INVALID_RESPONSE',
