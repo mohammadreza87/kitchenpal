@@ -18,14 +18,13 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 /**
- * Persist image to Supabase storage (server-side to avoid CORS)
+ * Persist image to Supabase storage from URL (server-side to avoid CORS)
  */
-async function persistImageToStorage(imageUrl: string, recipeName: string): Promise<string | null> {
-  console.log('[Image API] Persisting image to Supabase storage...')
-  console.log('[Image API] Source URL:', imageUrl.substring(0, 100) + '...')
+async function persistImageFromUrl(imageUrl: string, recipeName: string): Promise<string | null> {
+  console.log('[Image API] Persisting image from URL to Supabase storage...')
 
   try {
-    // Download image from Leonardo CDN (no CORS on server-side)
+    // Download image from CDN (no CORS on server-side)
     const response = await fetch(imageUrl)
     if (!response.ok) {
       console.error('[Image API] Failed to download image from CDN:', response.status, response.statusText)
@@ -66,7 +65,50 @@ async function persistImageToStorage(imageUrl: string, recipeName: string): Prom
     console.log('[Image API] Successfully persisted to Supabase:', publicUrl)
     return publicUrl
   } catch (error) {
-    console.error('[Image API] Error persisting image to storage:', error)
+    console.error('[Image API] Error persisting image from URL:', error)
+    return null
+  }
+}
+
+/**
+ * Persist base64 image to Supabase storage
+ */
+async function persistBase64Image(base64Data: string, mimeType: string, recipeName: string): Promise<string | null> {
+  console.log('[Image API] Persisting base64 image to Supabase storage...')
+
+  try {
+    // Convert base64 to buffer
+    const buffer = Buffer.from(base64Data, 'base64')
+    console.log('[Image API] Base64 image size:', buffer.length, 'bytes, type:', mimeType)
+
+    const extension = mimeType.split('/')[1] || 'png'
+    const sanitizedName = recipeName.toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 50)
+    const filePath = `generated/${sanitizedName}-${Date.now()}.${extension}`
+
+    console.log('[Image API] Uploading to path:', filePath)
+
+    // Upload to Supabase storage
+    const { error: uploadError } = await supabase.storage
+      .from('generated-recipes')
+      .upload(filePath, buffer, {
+        upsert: true,
+        contentType: mimeType,
+      })
+
+    if (uploadError) {
+      console.error('[Image API] Failed to upload base64 to Supabase storage:', uploadError.message, uploadError)
+      return null
+    }
+
+    // Get public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('generated-recipes')
+      .getPublicUrl(filePath)
+
+    console.log('[Image API] Successfully persisted base64 to Supabase:', publicUrl)
+    return publicUrl
+  } catch (error) {
+    console.error('[Image API] Error persisting base64 image:', error)
     return null
   }
 }
@@ -155,31 +197,50 @@ export async function POST(request: NextRequest): Promise<NextResponse<ImageResp
     const imageService = createImageService()
     const generatedImage = await imageService.generateFoodImage(recipeName, description)
 
-    console.log('[Image API] Generated image URL:', generatedImage.url?.substring(0, 100) || 'base64 data')
+    console.log('[Image API] Generated image - has base64:', !!generatedImage.base64Data, 'has URL:', !!generatedImage.url)
 
-    // Get the original image URL
-    let imageUrl = generatedImage.url || `data:${generatedImage.mimeType};base64,${generatedImage.base64Data}`
+    let imageUrl: string = FALLBACK_PLACEHOLDER_IMAGE
 
-    // If we have a URL (not base64), persist it to Supabase storage for permanent access
-    if (generatedImage.url && !generatedImage.url.startsWith('data:')) {
-      console.log('[Image API] Attempting to persist image to Supabase storage...')
-      const persistedUrl = await persistImageToStorage(generatedImage.url, recipeName)
+    // Priority 1: If we have base64 data, persist it to Supabase storage
+    if (generatedImage.base64Data && generatedImage.base64Data.length > 0) {
+      console.log('[Image API] Persisting base64 image to Supabase storage...')
+      const persistedUrl = await persistBase64Image(
+        generatedImage.base64Data,
+        generatedImage.mimeType,
+        recipeName
+      )
+      if (persistedUrl) {
+        console.log('[Image API] Using persisted URL from base64:', persistedUrl)
+        imageUrl = persistedUrl
+      } else {
+        // Fallback: return as data URL (not ideal but works)
+        console.log('[Image API] Persistence failed, using data URL')
+        imageUrl = `data:${generatedImage.mimeType};base64,${generatedImage.base64Data}`
+      }
+    }
+    // Priority 2: If we have a URL (not data:), persist it to Supabase storage
+    else if (generatedImage.url && !generatedImage.url.startsWith('data:') && !generatedImage.url.includes('placeholder')) {
+      console.log('[Image API] Persisting image from URL to Supabase storage...')
+      const persistedUrl = await persistImageFromUrl(generatedImage.url, recipeName)
       if (persistedUrl) {
         console.log('[Image API] Using persisted URL:', persistedUrl)
         imageUrl = persistedUrl
       } else {
         console.log('[Image API] Persistence failed, using original CDN URL')
+        imageUrl = generatedImage.url
       }
-    } else {
-      console.log('[Image API] Skipping persistence (base64 or no URL)')
+    }
+    // Priority 3: Use the URL as-is if it's a valid URL
+    else if (generatedImage.url) {
+      imageUrl = generatedImage.url
     }
 
-    // Build response with image URL or base64
+    // Build response
     const response: ImageResponse = {
       imageUrl,
     }
 
-    // Include base64 data if available
+    // Include base64 data if available (for debugging/alternative use)
     if (generatedImage.base64Data) {
       response.base64Data = generatedImage.base64Data
       response.mimeType = generatedImage.mimeType
