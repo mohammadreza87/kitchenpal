@@ -2,6 +2,12 @@
 
 A Next.js 14 application with Supabase authentication and database.
 
+## Demo Credentials
+
+For testing/judging purposes:
+- **Email:** `demo@kitchenpal.app`
+- **Password:** `KitchenPal2025!`
+
 ## Setup
 
 1. Install dependencies:
