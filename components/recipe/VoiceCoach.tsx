@@ -230,7 +230,7 @@ export function VoiceCoach({
               isActive ? 'bg-brand-primary' : 'bg-brand-primary/10'
             )}>
               <Image
-                src="/assets/icons/Microphone.svg"
+                src="/assets/icons/Volume-High.svg"
                 alt="Voice Coach"
                 width={20}
                 height={20}
